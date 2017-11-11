@@ -9,7 +9,4 @@ dependencies:
   - ipyleaflet
   - bqplot
   - erddapy
-  - pip
   - nb_conda_kernels
-  - pip:
-    - appmode
