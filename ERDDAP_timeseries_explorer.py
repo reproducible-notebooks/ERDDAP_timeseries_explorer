@@ -104,25 +104,7 @@ now = pendulum.utcnow()
 max_time = now
 min_time = now.subtract(weeks=2) 
 
-endpoint = 'https://cgoms.coas.oregonstate.edu/erddap'
 
-initial_standard_name = 'wind_speed'
-
-nchar = 3 # number of characters for short dataset name
-cdm_data_type = 'TimeSeries'
-center = [44, -124]
-zoom = 6
-
-now = pendulum.utcnow()
-max_time = now
-min_time = now.subtract(weeks=2) 
-
-import requests
-import getpass
-
-password = getpass.getpass()
-
-requests.get('https://cgoms.coas.oregonstate.edu/erddap', auth=('Endurance', password))
 # In[ ]:
 
 endpoint = 'http://www.neracoos.org/erddap'
