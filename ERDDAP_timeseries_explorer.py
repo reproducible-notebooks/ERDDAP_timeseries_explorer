@@ -5,10 +5,19 @@
 # Inspired by [Jason Grout's excellent ESIP Tech Dive talk on "Jupyter Widgets"](https://youtu.be/CVcrTRQkTxo?t=2596), this notebook uses the `ipyleaflet` and `bqplot` widgets
 # to interactively explore the last two weeks of time series data from an ERDDAP Server. Select a `standard_name` from the list, then click a station to see the time series.  
 
+# NOTE: To access a protected ERDDAP endpoint is protected, you can add a `~/.netrc` file like this:
+# ```
+# machine cgoms.coas.oregonstate.edu
+# login <username>
+# password <password>
+# ```
+
 # In[ ]:
 
 import numpy as np
 import pandas as pd
+import requests
+from io import StringIO
 
 
 # `pendulum` is a drop-in replacement for `datetime`, with more useful functions
@@ -38,93 +47,6 @@ from erddapy import ERDDAP
 
 # In[ ]:
 
-endpoint = 'https://erddap-uncabled.oceanobservatories.org/uncabled/erddap'
-
-initial_standard_name = 'sea_water_temperature'
-
-nchar = 8 # number of characters for short dataset name
-cdm_data_type = 'Point'
-center = [35, -100]
-zoom = 1
-
-min_time = '2017-08-01T00:00:00Z'
-max_time = '2017-08-03T00:00:00Z'
-
-
-# In[ ]:
-
-endpoint = 'http://erddap.sensors.ioos.us/erddap'
-
-initial_standard_name = 'sea_surface_wave_significant_height'
-
-nchar = 9 # number of characters for short dataset name
-cdm_data_type = 'TimeSeries'
-center = [35, -100]
-zoom = 3
-
-now = pendulum.utcnow()
-max_time = now
-min_time = now.subtract(weeks=2) 
-
-min_time = '2017-11-01T00:00:00Z'
-max_time = '2017-11-11T00:00:00Z'
-
-
-# In[ ]:
-
-endpoint = 'https://gamone.whoi.edu/erddap'
-
-initial_standard_name = 'sea_water_temperature'
-
-nchar = 9 # number of characters for short dataset name
-cdm_data_type = 'TimeSeries'
-center = [35, -100]
-zoom = 3
-
-now = pendulum.utcnow()
-max_time = now
-min_time = now.subtract(weeks=2) 
-
-min_time = '2011-05-05T00:00:00Z'
-max_time = '2011-05-15T00:00:00Z'
-
-
-# In[ ]:
-
-endpoint = 'http://ooivm1.whoi.net/erddap'
-
-initial_standard_name = 'wind_speed'
-
-nchar = 3 # number of characters for short dataset name
-cdm_data_type = 'TimeSeries'
-center = [42.5, -68]
-zoom = 6
-
-now = pendulum.utcnow()
-max_time = now
-min_time = now.subtract(weeks=2) 
-
-endpoint = 'https://cgoms.coas.oregonstate.edu/erddap'
-
-initial_standard_name = 'wind_speed'
-
-nchar = 3 # number of characters for short dataset name
-cdm_data_type = 'TimeSeries'
-center = [44, -124]
-zoom = 6
-
-now = pendulum.utcnow()
-max_time = now
-min_time = now.subtract(weeks=2) 
-
-import requests
-import getpass
-
-password = getpass.getpass()
-
-requests.get('https://cgoms.coas.oregonstate.edu/erddap', auth=('Endurance', password))
-# In[ ]:
-
 endpoint = 'http://www.neracoos.org/erddap'
 
 initial_standard_name = 'significant_height_of_wind_and_swell_waves'
@@ -132,6 +54,22 @@ initial_standard_name = 'significant_height_of_wind_and_swell_waves'
 nchar = 3 # number of characters for short dataset name
 cdm_data_type = 'TimeSeries'
 center = [42.5, -68]
+zoom = 6
+
+now = pendulum.utcnow()
+max_time = now
+min_time = now.subtract(weeks=2)
+
+
+# In[ ]:
+
+endpoint = 'https://cgoms.coas.oregonstate.edu/erddap'
+
+initial_standard_name = 'air_temperature'
+
+nchar = 3 # number of characters for short dataset name
+cdm_data_type = 'TimeSeries'
+center = [44, -124]
 zoom = 6
 
 now = pendulum.utcnow()
@@ -149,7 +87,10 @@ e = ERDDAP(server_url=endpoint)
 # In[ ]:
 
 url='{}/categorize/standard_name/index.csv'.format(endpoint)
-df = pd.read_csv(url, skiprows=[1, 2])
+
+r1 = requests.get(url, verify=True)
+
+df = pd.read_csv(StringIO(r1.text), skiprows=[1, 2])
 vars = df['Category'].values
 
 
@@ -165,7 +106,8 @@ dpdown = ipyw.Dropdown(options=vars, value=initial_standard_name)
 # In[ ]:
 
 def download_csv(url):
-    return pd.read_csv(url, index_col='time', parse_dates=True, skiprows=[1])
+    r = requests.get(url, verify=True)
+    return pd.read_csv(StringIO(r.text), index_col='time', parse_dates=True, skiprows=[1])
 
 
 # This function puts lon,lat and datasetID into a GeoJSON feature
@@ -196,7 +138,8 @@ def adv_search(e, standard_name, cdm_data_type, min_time, max_time):
     try:
         search_url = e.get_search_url(response='csv', cdm_data_type=cdm_data_type.lower(), items_per_page=100000,
                                   standard_name=standard_name, min_time=min_time, max_time=max_time)
-        df = pd.read_csv(search_url)
+        r = requests.get(search_url, verify=True)
+        df = pd.read_csv(StringIO(r.text))
     except:
         df = []
         if len(var)>14:
@@ -214,7 +157,8 @@ def adv_search(e, standard_name, cdm_data_type, min_time, max_time):
 
 def alllonlat(e, cdm_data_type, min_time, max_time):
     url='{}/tabledap/allDatasets.csv?datasetID%2CminLongitude%2CminLatitude&cdm_data_type=%22{}%22&minTime%3C={}&maxTime%3E={}'.format(e.server_url,cdm_data_type,max_time,min_time)
-    df = pd.read_csv(url, skiprows=[1])
+    r = requests.get(url, verify=True)
+    df = pd.read_csv(StringIO(r.text), skiprows=[1])
     return df
 
 
