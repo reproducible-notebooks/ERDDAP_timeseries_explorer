@@ -142,6 +142,24 @@ vars = df['Category'].values
 dpdown = ipyw.Dropdown(options=vars, value=initial_standard_name)
 
 
+# In[ ]:
+
+start_time = ipyw.DatePicker(
+    description='Start Date',
+    value=min_time,
+    disabled=False
+)
+
+
+# In[ ]:
+
+stop_time = ipyw.DatePicker(
+    description='Stop Date',
+    value=max_time,
+    disabled=False
+)
+
+
 # This function convert an ERDDAP timeseries CSV response to a Pandas dataframe
 
 # In[ ]:
@@ -226,7 +244,7 @@ def stdname2geojson(e, standard_name, min_time, max_time, nchar):
 
 def click_handler(event=None, id=None, properties=None):
     datasetID = properties['datasetID']
-    kwargs = {'time%3E=': min_time, 'time%3C=': max_time}
+    kwargs = {'time%3E=': start_time.value, 'time%3C=': stop_time.value}
     df, var = get_data(datasetID, dpdown.value, kwargs)
     figure.marks[0].x = df.index
     figure.marks[0].y = df[var]
@@ -235,28 +253,37 @@ def click_handler(event=None, id=None, properties=None):
 
 # This function updates the map when a new variable is selected
 
+# This specifies which function to use when a variable is selected from the dropdown list
+
 # In[ ]:
 
-def update_dpdown(change):
-    standard_name = change['new']
-    data, datasets = stdname2geojson(e, standard_name, min_time, max_time, nchar)
+def button_handler(change):
+    data, datasets = stdname2geojson(e, dpdown.value, start_time.value, stop_time.value, nchar)
     feature_layer = ipyl.GeoJSON(data=data)
     feature_layer.on_click(click_handler)
     map.layers = [map.layers[0], feature_layer]
 
 
-# This specifies which function to use when a variable is selected from the dropdown list
+# In[ ]:
+
+button = ipyw.ToggleButton(
+    value=False,
+    description='Refresh',
+    disabled=False,
+    button_style='', # 'success', 'info', 'warning', 'danger' or ''
+    tooltip='Description')
+
 
 # In[ ]:
 
-dpdown.observe(update_dpdown, names=['value'])
+button.observe(button_handler)
 
 
 # This function returns the specified dataset time series values as a Pandas dataframe
 
 # In[ ]:
 
-def get_data(dataset, standard_name, kwargs):
+def get_data(dataset, standard_name=None, kwargs=None):
     var = e.get_var_by_attr(dataset_id=dataset, 
                     standard_name=lambda v: str(v).lower() == standard_name)[0]
     download_url = e.get_download_url(dataset_id=dataset, 
@@ -269,8 +296,8 @@ def get_data(dataset, standard_name, kwargs):
 
 # In[ ]:
 
-map = ipyl.Map(center=center, zoom=zoom, layout=ipyl.Layout(width='650px', height='350px'))
-data, datasets = stdname2geojson(e, initial_standard_name, min_time, max_time, nchar)
+map = ipyl.Map(center=center, zoom=zoom, layout=ipyl.Layout(width='750px', height='350px'))
+data, datasets = stdname2geojson(e, initial_standard_name, start_time.value, stop_time.value, nchar)
 feature_layer = ipyl.GeoJSON(data=data)
 feature_layer.on_click(click_handler)
 map.layers = [map.layers[0], feature_layer]
@@ -284,9 +311,11 @@ dt_x = bq.DateScale()
 sc_y = bq.LinearScale()
 
 initial_dataset = datasets[0]
-kwargs = {'time%3E=': min_time, 'time%3C=': max_time}
-df, var = get_data(initial_dataset, initial_standard_name, kwargs)
-time_series = bq.Lines(x=df.index, y=df[var], scales={'x': dt_x, 'y': sc_y})
+kwargs = {'time%3E=': start_time.value, 'time%3C=': stop_time.value}
+df, var = get_data(initial_dataset, standard_name=initial_standard_name, kwargs=kwargs)
+def_tt = bq.Tooltip(fields=['y'], formats=['.2f'], labels=['value'])
+time_series = bq.Lines(x=df.index, y=df[var], 
+                       scales={'x': dt_x, 'y': sc_y}, tooltip=def_tt)
 ax_x = bq.Axis(scale=dt_x, label='Time')
 ax_y = bq.Axis(scale=sc_y, orientation='vertical')
 figure = bq.Figure(marks=[time_series], axes=[ax_x, ax_y])
@@ -299,7 +328,34 @@ figure.layout.width = '800px'
 
 # In[ ]:
 
-ipyw.VBox([dpdown, map, figure])
+from ipywidgets import Layout, Button, Box, FloatText, Textarea, Dropdown, Label, IntSlider
+
+form_item_layout = Layout(
+    display='flex',
+    flex_flow='column',
+    justify_content='space-between'
+)
+
+
+col1 = Box([map, figure], layout=form_item_layout)
+col2 = Box([dpdown, start_time, stop_time, button], layout=form_item_layout)
+
+
+form_items = [col1, col2]
+
+form = Box(form_items, layout=Layout(
+    display='flex',
+    flex_flow='row',
+    border='solid 2px',
+    align_items='flex-start',
+    width='100%'
+))
+form
+
+
+# In[ ]:
+
+
 
 
 # In[ ]:
