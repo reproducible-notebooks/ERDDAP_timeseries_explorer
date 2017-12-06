@@ -16,6 +16,8 @@ import pandas as pd
 # In[ ]:
 
 import pendulum
+import datetime
+global min_time, max_time
 
 
 # `ipyleaflet` and `bqplot` are both Jupyter widgets, so can interact with Python like any other widget.  Since we want to click on a map in a notebook and get an interactive time series plot, they are perfect tools to use here. 
@@ -62,31 +64,8 @@ cdm_data_type = 'TimeSeries'
 center = [35, -100]
 zoom = 3
 
-now = pendulum.utcnow()
-max_time = now
-min_time = now.subtract(weeks=2) 
-
-min_time = '2017-11-01T00:00:00Z'
-max_time = '2017-11-11T00:00:00Z'
-
-
-# In[ ]:
-
-endpoint = 'https://gamone.whoi.edu/erddap'
-
-initial_standard_name = 'sea_water_temperature'
-
-nchar = 9 # number of characters for short dataset name
-cdm_data_type = 'TimeSeries'
-center = [35, -100]
-zoom = 3
-
-now = pendulum.utcnow()
-max_time = now
-min_time = now.subtract(weeks=2) 
-
-min_time = '2011-05-05T00:00:00Z'
-max_time = '2011-05-15T00:00:00Z'
+min_time = pendulum.parse('2017-11-01T00:00:00Z')
+max_time = pendulum.parse('2017-11-11T00:00:00Z')
 
 
 # In[ ]:
@@ -119,6 +98,21 @@ zoom = 6
 now = pendulum.utcnow()
 max_time = now
 min_time = now.subtract(weeks=2) 
+
+
+# In[ ]:
+
+endpoint = 'https://gamone.whoi.edu/erddap'
+
+initial_standard_name = 'sea_water_temperature'
+
+nchar = 9 # number of characters for short dataset name
+cdm_data_type = 'TimeSeries'
+center = [35, -100]
+zoom = 3
+
+min_time = pendulum.parse('2011-05-05T00:00:00Z')
+max_time = pendulum.parse('2011-05-15T00:00:00Z')
 
 
 # In[ ]:
@@ -196,6 +190,7 @@ def adv_search(e, standard_name, cdm_data_type, min_time, max_time):
     try:
         search_url = e.get_search_url(response='csv', cdm_data_type=cdm_data_type.lower(), items_per_page=100000,
                                   standard_name=standard_name, min_time=min_time, max_time=max_time)
+        print(search_url)
         df = pd.read_csv(search_url)
     except:
         df = []
@@ -251,14 +246,20 @@ def click_handler(event=None, id=None, properties=None):
     figure.title = '{} - {}'.format(properties['short_dataset_name'], var)
 
 
-# This function updates the map when a new variable is selected
-
-# This specifies which function to use when a variable is selected from the dropdown list
+# This function updates the map when the "refresh" button is selected 
 
 # In[ ]:
 
 def button_handler(change):
-    data, datasets = stdname2geojson(e, dpdown.value, start_time.value, stop_time.value, nchar)
+    if type(start_time.value)==datetime.date:
+        min_time = pendulum.datetime(start_time.value.year, start_time.value.month, start_time.value.day)
+    else:
+        min_time = start_time.value
+    if type(stop_time.value)==datetime.date:
+        max_time = pendulum.datetime(stop_time.value.year, stop_time.value.month, stop_time.value.day)
+    else:
+        max_time = stop_time.value
+    data, datasets = stdname2geojson(e, dpdown.value, min_time, max_time, nchar)
     feature_layer = ipyl.GeoJSON(data=data)
     feature_layer.on_click(click_handler)
     map.layers = [map.layers[0], feature_layer]
@@ -351,11 +352,6 @@ form = Box(form_items, layout=Layout(
     width='100%'
 ))
 form
-
-
-# In[ ]:
-
-
 
 
 # In[ ]:
