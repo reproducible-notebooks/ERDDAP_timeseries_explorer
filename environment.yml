@@ -9,5 +9,5 @@ dependencies:
   - ipyleaflet
   - requests
   - bqplot
-  - erddapy
+  - erddapy>=0.1.2
   - jupyter
