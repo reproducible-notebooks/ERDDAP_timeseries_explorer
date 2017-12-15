@@ -7,4 +7,5 @@ Idea is to make a simple, interactive ERDDAP time series viewer in a notebook us
 - click a station and get a time series plot from the last two weeks of data 
 - select a different `standard_name` variable from a drop down menu
 
-[![Binder](http://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/reproducible-notebooks/ERDDAP_timeseries_explorer/master?filepath=ERDDAP_timeseries_explorer.ipynb)
+## Try it live
+[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/reproducible-notebooks/ERDDAP_timeseries_explorer/clus?urlpath=%2Fapps%2FERDDAP_timeseries_explorer.ipynb)
