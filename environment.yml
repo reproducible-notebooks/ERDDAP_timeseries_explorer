@@ -9,4 +9,7 @@ dependencies:
   - ipyleaflet
   - bqplot
   - erddapy
-  - nb_conda_kernels
+  - jupyter
+  - nodejs
+  - pip:
+    - git+https://github.com/jasongrout/ipyleaflet.git@markercluster
