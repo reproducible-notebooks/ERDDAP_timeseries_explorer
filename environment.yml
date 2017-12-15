@@ -6,7 +6,6 @@ dependencies:
   - python=3.6
   - pandas
   - pendulum
-  - ipyleaflet
   - bqplot
   - erddapy
   - jupyter
