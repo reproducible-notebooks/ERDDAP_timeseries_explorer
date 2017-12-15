@@ -1,0 +1,7 @@
+pandas
+pendulum
+bqplot
+erddapy
+requests
+appmode
+git+https://github.com/jasongrout/ipyleaflet.git@markercluster
