@@ -8,4 +8,4 @@ Idea is to make a simple, interactive ERDDAP time series viewer in a notebook us
 - select a different `standard_name` variable from a drop down menu
 
 ## Try it live
-[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/reproducible-notebooks/ERDDAP_timeseries_explorer/clus?urlpath=%2Fapps%2FERDDAP_timeseries_explorer.ipynb)
+[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/reproducible-notebooks/ERDDAP_timeseries_explorer/clus?urlpath=%2Fnotebooks%2FERDDAP_timeseries_explorer.ipynb)
