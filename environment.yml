@@ -9,4 +9,4 @@ dependencies:
   - ipyleaflet
   - bqplot
   - erddapy
-  - nb_conda_kernels
+  - ipykernel
