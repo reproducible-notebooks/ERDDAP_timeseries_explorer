@@ -14,23 +14,21 @@
 
 # In[1]:
 
+
 import numpy as np
 import pandas as pd
-import requests
-from io import StringIO
 
-
-# `pendulum` is a drop-in replacement for `datetime`, with more useful functions
 
 # In[2]:
 
+
 import pendulum
-import datetime
 
 
 # `ipyleaflet` and `bqplot` are both Jupyter widgets, so can interact with Python like any other widget.  Since we want to click on a map in a notebook and get an interactive time series plot, they are perfect tools to use here. 
 
 # In[3]:
+
 
 import ipyleaflet as ipyl
 import bqplot as bq
@@ -41,12 +39,15 @@ import ipywidgets as ipyw
 
 # In[4]:
 
+
 from erddapy import ERDDAP
+from erddapy.utilities import urlopen
 
 
 # This code should work with minor modifications on any ERDDAP (v1.64+) endpoint that has `cdm_data_type=timeseries` or `cdm_data_type=point` datasets.  Change the values for other ERDDAP endpoints or regions of interest
 
 # In[5]:
+
 
 endpoint = 'http://erddap.sensors.ioos.us/erddap'
 
@@ -63,21 +64,6 @@ max_time = pendulum.parse('2017-11-11T00:00:00Z')
 
 # In[6]:
 
-endpoint = 'http://www.neracoos.org/erddap'
-
-initial_standard_name = 'significant_height_of_wind_and_swell_waves'
-
-nchar = 3 # number of characters for short dataset name
-cdm_data_type = 'TimeSeries'
-center = [42.5, -68]
-zoom = 6
-
-now = pendulum.utcnow()
-max_time = now
-min_time = now.subtract(weeks=2) 
-
-
-# In[7]:
 
 endpoint = 'https://gamone.whoi.edu/erddap'
 
@@ -92,7 +78,8 @@ min_time = pendulum.parse('2011-05-05T00:00:00Z')
 max_time = pendulum.parse('2011-05-15T00:00:00Z')
 
 
-# In[8]:
+# In[7]:
+
 
 endpoint = 'https://erddap-uncabled.oceanobservatories.org/uncabled/erddap'
 
@@ -107,7 +94,8 @@ min_time = pendulum.parse('2017-08-01T00:00:00Z')
 max_time = pendulum.parse('2017-08-03T00:00:00Z')
 
 
-# In[9]:
+# In[8]:
+
 
 endpoint = 'https://cgoms.coas.oregonstate.edu/erddap'
 
@@ -118,12 +106,13 @@ cdm_data_type = 'TimeSeries'
 center = [44, -124]
 zoom = 6
 
-now = pendulum.utcnow()
+now = pendulum.now(tz='utc')
 max_time = now
-min_time = now.subtract(weeks=1) 
+min_time = now.subtract(days=3)
 
 
-# In[10]:
+# In[9]:
+
 
 endpoint = 'http://ooivm1.whoi.net/erddap'
 
@@ -134,63 +123,79 @@ cdm_data_type = 'TimeSeries'
 center = [41.0, -70.]
 zoom = 7
 
-now = pendulum.utcnow()
+now = pendulum.now(tz='utc')
 max_time = now
-min_time = now.subtract(days=3) 
+min_time = now.subtract(days=3)
+
+
+# In[10]:
+
+
+server = 'http://www.neracoos.org/erddap'
+
+standard_name = 'significant_height_of_wind_and_swell_waves'
+#standard_name = 'sea_water_temperature'
+
+nchar = 3 # number of characters for short dataset name
+cdm_data_type = 'TimeSeries'
+center = [42.5, -68]
+zoom = 6
+
+now = pendulum.now(tz='utc')
+search_max_time = now
+search_min_time = now.subtract(weeks=2)
 
 
 # In[11]:
 
-e = ERDDAP(server_url=endpoint)
+
+e = ERDDAP(server=server, protocol='tabledap')
 
 
 # Find all the `standard_name` attributes that exist on this ERDDAP endpoint, using [ERDDAP's "categorize" service](http://www.neracoos.org/erddap/categorize/index.html)
 
 # In[12]:
 
-url='{}/categorize/standard_name/index.csv'.format(endpoint)
-r = requests.get(url, verify=True)
-df = pd.read_csv(StringIO(r.text), skiprows=[1, 2])
-vars = df['Category'].values
+
+url='{}/categorize/standard_name/index.csv'.format(server)
+df = pd.read_csv(urlopen(url), skiprows=[1, 2])
+standard_names = df['Category'].values
 
 
 # Create a dropdown menu widget with all the `standard_name` values found
 
 # In[13]:
 
-dpdown = ipyw.Dropdown(options=vars, value=initial_standard_name)
 
+widget_std_names = ipyw.Dropdown(options=standard_names, value=standard_name)
+
+
+# Create a text widget to enter the search minimum time
 
 # In[14]:
 
-start_time = ipyw.DatePicker(
-    description='Start Date',
-    value=min_time,
+
+widget_search_min_time = ipyw.Text(
+    value=search_min_time.to_datetime_string(),
+    description='Search Min',
     disabled=False
 )
 
 
 # In[15]:
 
-stop_time = ipyw.DatePicker(
-    description='Stop Date',
-    value=max_time,
+
+widget_search_max_time = ipyw.Text(
+    value=search_max_time.to_datetime_string(),
+    description='Search Max',
     disabled=False
 )
 
 
-# This function convert an ERDDAP timeseries CSV response to a Pandas dataframe
+# This function puts lon,lat and datasetID into a GeoJSON feature
 
 # In[16]:
 
-def download_csv(url):
-    r = requests.get(url, verify=True)
-    return pd.read_csv(StringIO(r.text), index_col='time', parse_dates=True, skiprows=[1])
-
-
-# This function puts lon,lat and datasetID into a GeoJSON feature
-
-# In[17]:
 
 def point(dataset, lon, lat, nchar):
     geojsonFeature = {
@@ -210,14 +215,14 @@ def point(dataset, lon, lat, nchar):
 
 # This function finds all the datasets with a given standard_name in the specified time period, and return GeoJSON
 
-# In[18]:
+# In[17]:
+
 
 def adv_search(e, standard_name, cdm_data_type, min_time, max_time):
     try:
         search_url = e.get_search_url(response='csv', cdm_data_type=cdm_data_type.lower(), items_per_page=100000,
                                   standard_name=standard_name, min_time=min_time, max_time=max_time)
-        r = requests.get(search_url, verify=True)
-        df = pd.read_csv(StringIO(r.text))
+        df = pd.read_csv(urlopen(search_url))
     except:
         df = []
         if len(var)>14:
@@ -231,160 +236,267 @@ def adv_search(e, standard_name, cdm_data_type, min_time, max_time):
 
 # This function returns the lon,lat vlaues from allDatasets
 
-# In[19]:
+# In[18]:
+
 
 def alllonlat(e, cdm_data_type, min_time, max_time):
-    url='{}/tabledap/allDatasets.csv?datasetID%2CminLongitude%2CminLatitude&cdm_data_type=%22{}%22&minTime%3C={}&maxTime%3E={}'.format(e.server_url,cdm_data_type,max_time,min_time)
-    r = requests.get(url, verify=True)
-    df = pd.read_csv(StringIO(r.text), skiprows=[1])
+    url='{}/tabledap/allDatasets.csv?datasetID%2CminLongitude%2CminLatitude&cdm_data_type=%22{}%22&minTime%3C={}&maxTime%3E={}'.format(e.server,
+                        cdm_data_type,max_time.to_datetime_string(),min_time.to_datetime_string())
+    df = pd.read_csv(urlopen(url), skiprows=[1])
     return df
 
 
-# In[20]:
+# In[19]:
 
-def stdname2geojson(e, standard_name, min_time, max_time, nchar):
+
+def stdname2geojson(e, standard_name, cdm_data_type, search_min_time, search_max_time):
     '''return geojson containing lon, lat and datasetID for all matching stations'''
     # find matching datsets using Advanced Search
-    dfa = adv_search(e, standard_name, cdm_data_type, min_time, max_time)
+    dfa = adv_search(e, standard_name, cdm_data_type, search_min_time, search_max_time)
     if isinstance(dfa, pd.DataFrame):
         datasets = dfa['Dataset ID'].values
-        dpdown_ds.options = datasets
+
         # find lon,lat values from allDatasets 
-        dfll = alllonlat(e, cdm_data_type, min_time, max_time)
+        dfll = alllonlat(e, cdm_data_type, search_min_time, search_max_time)
         # extract lon,lat values of matching datasets from allDatasets dataframe
         dfr = dfll[dfll['datasetID'].isin(dfa['Dataset ID'])]
         # contruct the GeoJSON using fast itertuples
-        geojson = {'features':[point(row[1],row[2],row[3],nchar) for row in dfr.itertuples()]}
+        geojson = {'features':[point(row[1],row[2],row[3],3) for row in dfr.itertuples()]}
     else:
         geojson = {'features':[]}
         datasets = []
     return geojson, datasets
 
 
-# This function updates the time series plot when a station marker is clicked
+# The `map_click_handler` function updates the time series plot when a station marker is clicked
+
+# In[20]:
+
+
+def map_click_handler(event=None, id=None, properties=None):
+    global dataset_id, standard_name
+    print('map clicked')
+    dataset_id = properties['datasetID']
+    # get standard_name from dropdown widget
+    standard_name = widget_std_names.value
+    print(dataset_id, standard_name, constraints)
+    widget_dsnames.value = dataset_id
+    update_timeseries_plot(dataset=dataset_id, standard_name=standard_name, constraints=constraints)
+
+
+# The `search_button_handler` function updates the map when the `Search` button is selected 
 
 # In[21]:
 
-def click_handler(event=None, id=None, properties=None):
-    datasetID = properties['datasetID']
-    kwargs = {'time%3E=': start_time.value, 'time%3C=': stop_time.value}
-    df, var = get_data(datasetID, dpdown.value, kwargs)
-    figure.marks[0].x = df.index
-    figure.marks[0].y = df[var]
-    figure.title = '{} - {}'.format(properties['short_dataset_name'], var)
 
+def widget_replot_button_handler(change):
+    global dataset_id, constraints
+    plot_start_time = pendulum.parse(widget_plot_start_time.value)
+    plot_stop_time = pendulum.parse(widget_plot_stop_time.value)
 
-# This function updates the map when the "refresh" button is selected 
+    constraints = {
+    'time>=': plot_start_time,
+    'time<=': plot_stop_time
+    }
+    dataset_id = widget_dsnames.value
+    update_timeseries_plot(dataset=dataset_id, standard_name=standard_name, constraints=constraints)
+
 
 # In[22]:
 
-def button_handler(change):
-    global datasets
-    if type(start_time.value)==datetime.date:
-        min_time = pendulum.datetime(start_time.value.year, start_time.value.month, start_time.value.day)
-    else:
-        min_time = start_time.value
-    if type(stop_time.value)==datetime.date:
-        max_time = pendulum.datetime(stop_time.value.year, stop_time.value.month, stop_time.value.day)
-    else:
-        max_time = stop_time.value
-    data, datasets = stdname2geojson(e, dpdown.value, min_time, max_time, nchar)
-    dpdown_ds.options = datasets
-    feature_layer = ipyl.GeoJSON(data=data)
-    feature_layer.on_click(click_handler)
+
+def widget_search_button_handler(change):
+    global features, datasets, standard_name, dataset_id, constraints
+    search_min_time = pendulum.parse(widget_search_min_time.value)
+    search_max_time = pendulum.parse(widget_search_max_time.value)
+
+    # get standard_name from dropdown widget
+    standard_name = widget_std_names.value
+
+    # get updated datsets and map features
+    features, datasets = stdname2geojson(e, standard_name, cdm_data_type, search_min_time, search_max_time)
+    # update map
+    feature_layer = ipyl.GeoJSON(data=features)
+    feature_layer.on_click(map_click_handler)
     map.layers = [map.layers[0], feature_layer]
+    
+   # widget_plot_start_time.value = widget_search_min_time.value
+   # widget_plot_stop_time.value = widget_search_max_time.value
+
+    # populate datasets widget with new info
+    dataset_id = datasets[0]
+    widget_dsnames.options = datasets
+    widget_dsnames.value = dataset_id
+    
+    constraints = {
+    'time>=': search_min_time,
+    'time<=': search_max_time
+    }
+    print(dataset_id, standard_name, constraints)
+    update_timeseries_plot(dataset=dataset_id, standard_name=standard_name, constraints=constraints)
 
 
 # In[23]:
 
-button = ipyw.Button(
-    value=False,
-    description='Refresh',
-    disabled=False,
-    button_style='', # 'success', 'info', 'warning', 'danger' or ''
-    tooltip='Description')
+
+def update_timeseries_plot(dataset=None, standard_name=None, constraints=None, title_len=18):
+    df, var = get_data(dataset=dataset, standard_name=standard_name, constraints=constraints)
+    figure.marks[0].x = df.index
+    figure.marks[0].y = df[var]
+    figure.title = '{} - {}'.format(dataset[:title_len], var)
 
 
 # In[24]:
 
-button.on_click(button_handler)
+
+widget_search_button = ipyw.Button(
+    value=False,
+    description='Update search',
+    disabled=False,
+    button_style='')
+
+
+# In[25]:
+
+
+widget_replot_button = ipyw.Button(
+    value=False,
+    description='Update TimeSeries',
+    disabled=False,
+    button_style='')
+
+
+# In[26]:
+
+
+widget_replot_button.on_click(widget_replot_button_handler)
+
+
+# In[27]:
+
+
+widget_search_button.on_click(widget_search_button_handler)
+
+
+# In[28]:
+
+
+widget_plot_start_time = ipyw.Text(
+    value=search_min_time.to_datetime_string(),
+    description='Plot Min',
+    disabled=False
+)
+
+
+# In[29]:
+
+
+widget_plot_stop_time = ipyw.Text(
+    value=search_max_time.to_datetime_string(),
+    description='Plot Max',
+    disabled=False
+)
 
 
 # This function returns the specified dataset time series values as a Pandas dataframe
 
-# In[25]:
+# In[30]:
 
-def get_data(dataset, standard_name=None, kwargs=None):
+
+def get_data(dataset=None, standard_name=None, constraints=None):
+    print(dataset_id, standard_name, constraints)
     var = e.get_var_by_attr(dataset_id=dataset, 
                     standard_name=lambda v: str(v).lower() == standard_name.lower())[0]
-    download_url = e.get_download_url(dataset_id=dataset, 
-                                  variables=['time',var], response='csv', **kwargs)
-    df = download_csv(download_url)
+    download_url = e.get_download_url(dataset_id=dataset, constraints=constraints,
+                                  variables=['time',var], response='csv')
+    df = pd.read_csv(urlopen(download_url), index_col='time', parse_dates=True, skiprows=[1])
     return df, var
 
 
 # This defines the initial `ipyleaflet` map 
 
-# In[26]:
-
-dpdown_ds = ipyw.Dropdown()
+# In[31]:
 
 
-# In[27]:
-
-map = ipyl.Map(center=center, zoom=zoom, layout=ipyl.Layout(width='750px', height='350px'))
-data, datasets = stdname2geojson(e, initial_standard_name, start_time.value, stop_time.value, nchar)
-feature_layer = ipyl.GeoJSON(data=data)
-feature_layer.on_click(click_handler)
+map = ipyl.Map(center=center, zoom=zoom, layout=dict(width='750px', height='350px'))
+features, datasets = stdname2geojson(e, standard_name, cdm_data_type, search_min_time, search_max_time)
+dataset_id = datasets[0]
+feature_layer = ipyl.GeoJSON(data=features)
+feature_layer.on_click(map_click_handler)
 map.layers = [map.layers[0], feature_layer]
+
+
+# In[32]:
+
+
+widget_dsnames = ipyw.Dropdown(options=datasets, value=dataset_id)
 
 
 # This defines the intitial `bqplot` time series plot
 
-# In[28]:
+# In[33]:
+
 
 dt_x = bq.DateScale()
 sc_y = bq.LinearScale()
 
-initial_dataset = datasets[0]
-kwargs = {'time%3E=': start_time.value, 'time%3C=': stop_time.value}
-df, var = get_data(initial_dataset, standard_name=initial_standard_name, kwargs=kwargs)
+constraints = {
+    'time>=': search_min_time,
+    'time<=': search_max_time
+}
+
+df, var = get_data(dataset=dataset_id, standard_name=standard_name, constraints=constraints)
 def_tt = bq.Tooltip(fields=['y'], formats=['.2f'], labels=['value'])
 time_series = bq.Lines(x=df.index, y=df[var], 
                        scales={'x': dt_x, 'y': sc_y}, tooltip=def_tt)
 ax_x = bq.Axis(scale=dt_x, label='Time')
 ax_y = bq.Axis(scale=sc_y, orientation='vertical')
 figure = bq.Figure(marks=[time_series], axes=[ax_x, ax_y])
-figure.title = '{} - {}'.format(initial_dataset[:nchar], var)
+figure.title = '{} - {}'.format(dataset_id[:18], var)
 figure.layout.height = '300px'
 figure.layout.width = '800px'
 
 
-# In[29]:
-
-def dpdown_ds_handler(change):
-    datasetID = dpdown_ds.value
-    kwargs = {'time%3E=': start_time.value, 'time%3C=': stop_time.value}
-    df, var = get_data(datasetID, dpdown.value, kwargs)
-    figure.marks[0].x = df.index
-    figure.marks[0].y = df[var]
-    figure.title = '{} - {}'.format(datasetID[:nchar], var)
-    
+# In[34]:
 
 
-# In[30]:
+#Not currently using this (cell below setting "observe" to this function is commented out)
+def widget_dsnames_handler(change):
+    dataset_id = widget_dsnames.value
+    constraints = {
+    'time>=': search_min_time,
+    'time<=': search_max_time
+    }
+    update_timeseries_plot(dataset=dataset_id, standard_name=standard_name, constraints=constraints)
 
-dpdown_ds.observe(dpdown_ds_handler)
+
+# In[35]:
+
+
+#widget_dsnames.observe(widget_replot_button_handler)
+
+
+# In[36]:
+
+
+#all this widget does it take up 7 cm of vertical space 
+ispace = ipyw.HTML(
+    value='<style>  .space {margin-bottom: 6.5cm;}</style><p class="space"> </p>',
+    placeholder='',
+    description='',
+)
 
 
 # This specifies the widget layout
 
-# In[31]:
+# In[37]:
+
 
 form_item_layout = ipyw.Layout(display='flex', flex_flow='column', justify_content='space-between')
 
-col1 = ipyw.Box([map, dpdown_ds, figure], layout=form_item_layout)
-col2 = ipyw.Box([dpdown, start_time, stop_time, button], layout=form_item_layout)
+col1 = ipyw.Box([map, figure], layout=form_item_layout)
+col2 = ipyw.Box([widget_std_names, widget_search_min_time, widget_search_max_time, widget_search_button,
+                ispace, widget_dsnames, widget_plot_start_time, widget_plot_stop_time, widget_replot_button], layout=form_item_layout)
 
 form_items = [col1, col2]
 
@@ -392,9 +504,4 @@ form = ipyw.Box(form_items, layout=ipyw.Layout(display='flex', flex_flow='row', 
     align_items='flex-start', width='100%'))
 
 form
-
-
-# In[ ]:
-
-
 
