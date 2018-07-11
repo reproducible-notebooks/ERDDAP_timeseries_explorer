@@ -248,11 +248,9 @@ def stdname2geojson(e, standard_name, cdm_data_type, search_min_time, search_max
 
 def map_click_handler(event=None, id=None, properties=None):
     global dataset_id, standard_name
-    print('map clicked')
     dataset_id = properties['datasetID']
     # get standard_name from dropdown widget
     standard_name = widget_std_names.value
-    print(dataset_id, standard_name, constraints)
     widget_dsnames.value = dataset_id
     update_timeseries_plot(dataset=dataset_id, standard_name=standard_name, constraints=constraints)
 
@@ -303,7 +301,6 @@ def widget_search_button_handler(change):
     'time>=': search_min_time,
     'time<=': search_max_time
     }
-    print(dataset_id, standard_name, constraints)
     update_timeseries_plot(dataset=dataset_id, standard_name=standard_name, constraints=constraints)
 
 
@@ -373,7 +370,6 @@ widget_plot_stop_time = ipyw.Text(
 
 
 def get_data(dataset=None, standard_name=None, constraints=None):
-    print(dataset_id, standard_name, constraints)
     var = e.get_var_by_attr(dataset_id=dataset, 
                     standard_name=lambda v: str(v).lower() == standard_name.lower())[0]
     download_url = e.get_download_url(dataset_id=dataset, constraints=constraints,
