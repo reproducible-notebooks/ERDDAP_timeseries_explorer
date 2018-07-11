@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - appmode
   - python=3.6
   - pandas
   - pendulum
