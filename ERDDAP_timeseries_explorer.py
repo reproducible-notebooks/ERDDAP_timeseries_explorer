@@ -5,29 +5,20 @@
 # Inspired by [Jason Grout's excellent ESIP Tech Dive talk on "Jupyter Widgets"](https://youtu.be/CVcrTRQkTxo?t=2596), this notebook uses the `ipyleaflet` and `bqplot` widgets
 # to interactively explore the last two weeks of time series data from an ERDDAP Server. Select a `standard_name` from the list, then click a station to see the time series.  
 
-# NOTE: To access a protected ERDDAP endpoint is protected, you can add a `~/.netrc` file like this:
-# ```
-# machine cgoms.coas.oregonstate.edu
-# login <username>
-# password <password>
-# ```
-
-# In[1]:
+# In[ ]:
 
 
 import numpy as np
 import pandas as pd
 
 
-# In[2]:
+# In[ ]:
 
 
 import pendulum
 
 
-# `ipyleaflet` and `bqplot` are both Jupyter widgets, so can interact with Python like any other widget.  Since we want to click on a map in a notebook and get an interactive time series plot, they are perfect tools to use here. 
-
-# In[3]:
+# In[ ]:
 
 
 import ipyleaflet as ipyl
@@ -35,18 +26,14 @@ import bqplot as bq
 import ipywidgets as ipyw
 
 
-# To make working with ERDDAP simpler, we use `erddapy`, a high-level python interface to ERDDAP's RESTful API
-
-# In[4]:
+# In[ ]:
 
 
 from erddapy import ERDDAP
 from erddapy.utilities import urlopen
 
 
-# This code should work with minor modifications on any ERDDAP (v1.64+) endpoint that has `cdm_data_type=timeseries` or `cdm_data_type=point` datasets.  Change the values for other ERDDAP endpoints or regions of interest
-
-# In[5]:
+# In[ ]:
 
 
 endpoint = 'http://erddap.sensors.ioos.us/erddap'
@@ -62,7 +49,7 @@ min_time = pendulum.parse('2017-11-01T00:00:00Z')
 max_time = pendulum.parse('2017-11-11T00:00:00Z')
 
 
-# In[6]:
+# In[ ]:
 
 
 endpoint = 'https://gamone.whoi.edu/erddap'
@@ -78,7 +65,7 @@ min_time = pendulum.parse('2011-05-05T00:00:00Z')
 max_time = pendulum.parse('2011-05-15T00:00:00Z')
 
 
-# In[7]:
+# In[ ]:
 
 
 endpoint = 'https://erddap-uncabled.oceanobservatories.org/uncabled/erddap'
@@ -94,7 +81,7 @@ min_time = pendulum.parse('2017-08-01T00:00:00Z')
 max_time = pendulum.parse('2017-08-03T00:00:00Z')
 
 
-# In[8]:
+# In[ ]:
 
 
 endpoint = 'https://cgoms.coas.oregonstate.edu/erddap'
@@ -111,7 +98,7 @@ max_time = now
 min_time = now.subtract(days=3)
 
 
-# In[9]:
+# In[ ]:
 
 
 endpoint = 'http://ooivm1.whoi.net/erddap'
@@ -128,7 +115,7 @@ max_time = now
 min_time = now.subtract(days=3)
 
 
-# In[10]:
+# In[ ]:
 
 
 server = 'http://www.neracoos.org/erddap'
@@ -146,15 +133,13 @@ search_max_time = now
 search_min_time = now.subtract(weeks=2)
 
 
-# In[11]:
+# In[ ]:
 
 
 e = ERDDAP(server=server, protocol='tabledap')
 
 
-# Find all the `standard_name` attributes that exist on this ERDDAP endpoint, using [ERDDAP's "categorize" service](http://www.neracoos.org/erddap/categorize/index.html)
-
-# In[12]:
+# In[ ]:
 
 
 url='{}/categorize/standard_name/index.csv'.format(server)
@@ -162,17 +147,13 @@ df = pd.read_csv(urlopen(url), skiprows=[1, 2])
 standard_names = df['Category'].values
 
 
-# Create a dropdown menu widget with all the `standard_name` values found
-
-# In[13]:
+# In[ ]:
 
 
 widget_std_names = ipyw.Dropdown(options=standard_names, value=standard_name)
 
 
-# Create a text widget to enter the search minimum time
-
-# In[14]:
+# In[ ]:
 
 
 widget_search_min_time = ipyw.Text(
@@ -182,7 +163,7 @@ widget_search_min_time = ipyw.Text(
 )
 
 
-# In[15]:
+# In[ ]:
 
 
 widget_search_max_time = ipyw.Text(
@@ -192,9 +173,7 @@ widget_search_max_time = ipyw.Text(
 )
 
 
-# This function puts lon,lat and datasetID into a GeoJSON feature
-
-# In[16]:
+# In[ ]:
 
 
 def point(dataset, lon, lat, nchar):
@@ -213,9 +192,7 @@ def point(dataset, lon, lat, nchar):
     return geojsonFeature
 
 
-# This function finds all the datasets with a given standard_name in the specified time period, and return GeoJSON
-
-# In[17]:
+# In[ ]:
 
 
 def adv_search(e, standard_name, cdm_data_type, min_time, max_time):
@@ -234,9 +211,7 @@ def adv_search(e, standard_name, cdm_data_type, min_time, max_time):
     return df
 
 
-# This function returns the lon,lat vlaues from allDatasets
-
-# In[18]:
+# In[ ]:
 
 
 def alllonlat(e, cdm_data_type, min_time, max_time):
@@ -246,7 +221,7 @@ def alllonlat(e, cdm_data_type, min_time, max_time):
     return df
 
 
-# In[19]:
+# In[ ]:
 
 
 def stdname2geojson(e, standard_name, cdm_data_type, search_min_time, search_max_time):
@@ -268,9 +243,7 @@ def stdname2geojson(e, standard_name, cdm_data_type, search_min_time, search_max
     return geojson, datasets
 
 
-# The `map_click_handler` function updates the time series plot when a station marker is clicked
-
-# In[20]:
+# In[ ]:
 
 
 def map_click_handler(event=None, id=None, properties=None):
@@ -284,9 +257,7 @@ def map_click_handler(event=None, id=None, properties=None):
     update_timeseries_plot(dataset=dataset_id, standard_name=standard_name, constraints=constraints)
 
 
-# The `search_button_handler` function updates the map when the `Search` button is selected 
-
-# In[21]:
+# In[ ]:
 
 
 def widget_replot_button_handler(change):
@@ -302,7 +273,7 @@ def widget_replot_button_handler(change):
     update_timeseries_plot(dataset=dataset_id, standard_name=standard_name, constraints=constraints)
 
 
-# In[22]:
+# In[ ]:
 
 
 def widget_search_button_handler(change):
@@ -336,7 +307,7 @@ def widget_search_button_handler(change):
     update_timeseries_plot(dataset=dataset_id, standard_name=standard_name, constraints=constraints)
 
 
-# In[23]:
+# In[ ]:
 
 
 def update_timeseries_plot(dataset=None, standard_name=None, constraints=None, title_len=18):
@@ -346,7 +317,7 @@ def update_timeseries_plot(dataset=None, standard_name=None, constraints=None, t
     figure.title = '{} - {}'.format(dataset[:title_len], var)
 
 
-# In[24]:
+# In[ ]:
 
 
 widget_search_button = ipyw.Button(
@@ -356,7 +327,7 @@ widget_search_button = ipyw.Button(
     button_style='')
 
 
-# In[25]:
+# In[ ]:
 
 
 widget_replot_button = ipyw.Button(
@@ -366,19 +337,19 @@ widget_replot_button = ipyw.Button(
     button_style='')
 
 
-# In[26]:
+# In[ ]:
 
 
 widget_replot_button.on_click(widget_replot_button_handler)
 
 
-# In[27]:
+# In[ ]:
 
 
 widget_search_button.on_click(widget_search_button_handler)
 
 
-# In[28]:
+# In[ ]:
 
 
 widget_plot_start_time = ipyw.Text(
@@ -388,7 +359,7 @@ widget_plot_start_time = ipyw.Text(
 )
 
 
-# In[29]:
+# In[ ]:
 
 
 widget_plot_stop_time = ipyw.Text(
@@ -398,9 +369,7 @@ widget_plot_stop_time = ipyw.Text(
 )
 
 
-# This function returns the specified dataset time series values as a Pandas dataframe
-
-# In[30]:
+# In[ ]:
 
 
 def get_data(dataset=None, standard_name=None, constraints=None):
@@ -413,9 +382,7 @@ def get_data(dataset=None, standard_name=None, constraints=None):
     return df, var
 
 
-# This defines the initial `ipyleaflet` map 
-
-# In[31]:
+# In[ ]:
 
 
 map = ipyl.Map(center=center, zoom=zoom, layout=dict(width='750px', height='350px'))
@@ -426,15 +393,13 @@ feature_layer.on_click(map_click_handler)
 map.layers = [map.layers[0], feature_layer]
 
 
-# In[32]:
+# In[ ]:
 
 
 widget_dsnames = ipyw.Dropdown(options=datasets, value=dataset_id)
 
 
-# This defines the intitial `bqplot` time series plot
-
-# In[33]:
+# In[ ]:
 
 
 dt_x = bq.DateScale()
@@ -457,7 +422,7 @@ figure.layout.height = '300px'
 figure.layout.width = '800px'
 
 
-# In[34]:
+# In[ ]:
 
 
 #Not currently using this (cell below setting "observe" to this function is commented out)
@@ -470,13 +435,13 @@ def widget_dsnames_handler(change):
     update_timeseries_plot(dataset=dataset_id, standard_name=standard_name, constraints=constraints)
 
 
-# In[35]:
+# In[ ]:
 
 
 #widget_dsnames.observe(widget_replot_button_handler)
 
 
-# In[36]:
+# In[ ]:
 
 
 #all this widget does it take up 7 cm of vertical space 
@@ -487,9 +452,7 @@ ispace = ipyw.HTML(
 )
 
 
-# This specifies the widget layout
-
-# In[37]:
+# In[ ]:
 
 
 form_item_layout = ipyw.Layout(display='flex', flex_flow='column', justify_content='space-between')
