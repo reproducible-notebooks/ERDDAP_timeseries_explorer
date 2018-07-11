@@ -11,4 +11,5 @@ Notebook in regular mode:
 [![Binder](http://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/reproducible-notebooks/ERDDAP_timeseries_explorer/master?filepath=ERDDAP_timeseries_explorer.ipynb)
 
 Notebook in app-mode:
-[![Binder](http://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/reproducible-notebooks/app-mode?urlpath=%2Fapps%2fERDDAP_timeseries_explorer.ipynb)
+[![Binder](http://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/reproducible-notebooks/ERDDAP_timeseries_explorer/app-mode?urlpath=%2Fapps%2fERDDAP_timeseries_explorer.ipynb)
+
