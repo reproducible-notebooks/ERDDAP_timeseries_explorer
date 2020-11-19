@@ -41,7 +41,7 @@ import ipywidgets as ipyw
 
 
 from erddapy import ERDDAP
-from erddapy.utilities import urlopen
+from erddapy.url_handling import urlopen
 
 
 # This code should work with minor modifications on any ERDDAP (v1.64+) endpoint that has `cdm_data_type=timeseries` or `cdm_data_type=point` datasets.  Change the values for other ERDDAP endpoints or regions of interest
