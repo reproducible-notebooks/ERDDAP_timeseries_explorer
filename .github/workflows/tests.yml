@@ -27,5 +27,5 @@ jobs:
     - name: Python ${{ matrix.python-version }}
       shell: bash -l {0}
       run: |
-        conda env create --file environment.yml --channel conda-forge --strict-channel-priority
+        conda env create --file environment.yml
         source activate widgets
