@@ -9,7 +9,3 @@ Idea is to make a simple, interactive ERDDAP time series viewer in a notebook us
 
 ### Run Notebook in regular mode:
 [![Binder](http://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/reproducible-notebooks/ERDDAP_timeseries_explorer/master?filepath=ERDDAP_timeseries_explorer.ipynb)
-
-### Run Notebook in app-mode:
-[![Binder](http://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/reproducible-notebooks/ERDDAP_timeseries_explorer/app-mode?urlpath=%2Fapps%2fERDDAP_timeseries_explorer.ipynb)
-
