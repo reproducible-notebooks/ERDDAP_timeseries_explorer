@@ -1,15 +1,18 @@
-import numpy as np
-import pandas as pd
-import bqplot as bq
-import pendulum
 import re
+from urllib.parse import quote
+
+import bqplot as bq
 import ipyleaflet as ipyl
 import ipywidgets as ipyw
-from requests import HTTPError
-from urllib.parse import quote
+import numpy as np
+import pandas as pd
+import pendulum
 from erddapy import ERDDAP
 from erddapy.url_handling import urlopen
+from requests import HTTPError
+
 from erddap_app.config import servers
+
 
 def point(dataset, lon, lat, nchar):
     """This function puts lon,lat and datasetID into a GeoJSON feature"""
@@ -21,8 +24,9 @@ def point(dataset, lon, lat, nchar):
     geojsonFeature["properties"]["style"] = {"color": "Grey"}
     return geojsonFeature
 
+
 def search_datasets(e, standard_name, cdm_data_type, min_time, max_time, skip_datasets):
-    """This function finds all the datasets with a given standard_name in 
+    """This function finds all the datasets with a given standard_name in
     the specified time period, and return GeoJSON"""
 
     search_url = e.get_search_url(
@@ -53,6 +57,7 @@ def search_datasets(e, standard_name, cdm_data_type, min_time, max_time, skip_da
         figure.marks[0].y = 0.0 * figure.marks[0].y
     return df
 
+
 def all_datasets_locations(e, cdm_data_type, min_time, max_time):
     """This function returns the lon,lat values from all datasets"""
     url_dset = (
@@ -69,12 +74,18 @@ def all_datasets_locations(e, cdm_data_type, min_time, max_time):
     df = pd.read_csv(urlopen(url_dataset), skiprows=[1])
     return df
 
+
 def stdname2geojson(e, standard_name, cdm_data_type, min_time, max_time, skip_datasets):
-    """This function returns GeoJSON containing lon, lat and dataset ID 
+    """This function returns GeoJSON containing lon, lat and dataset ID
     for all matching stations"""
 
     dfsd = search_datasets(
-        e, standard_name, cdm_data_type, min_time, max_time, skip_datasets
+        e,
+        standard_name,
+        cdm_data_type,
+        min_time,
+        max_time,
+        skip_datasets,
     )
     if not dfsd.empty:
         datasets = dfsd["Dataset ID"].values
@@ -82,25 +93,35 @@ def stdname2geojson(e, standard_name, cdm_data_type, min_time, max_time, skip_da
         dfad = all_datasets_locations(e, cdm_data_type, min_time, max_time)
         df = dfad[dfad["datasetID"].isin(dfsd["Dataset ID"])]
         geojson = {
-            "features": [point(row[1], row[2], row[3], 3) for row in df.itertuples()]
+            "features": [point(row[1], row[2], row[3], 3) for row in df.itertuples()],
         }
     else:
         geojson = {"features": []}
         datasets = []
     return geojson, datasets
 
-def update_timeseries_plot(e=None,
-    dataset=None, standard_name=None, constraints=None, title_len=18
+
+def update_timeseries_plot(
+    e=None,
+    dataset=None,
+    standard_name=None,
+    constraints=None,
+    title_len=18,
 ):
-    """This function updates the time series plot when the Update Search 
+    """This function updates the time series plot when the Update Search
     or the Update TimeSeries button is selected."""
     from __main__ import figure
-    df, var = get_timeseries(e,
-        dataset=dataset, standard_name=standard_name, constraints=constraints
+
+    df, var = get_timeseries(
+        e,
+        dataset=dataset,
+        standard_name=standard_name,
+        constraints=constraints,
     )
     figure.marks[0].x = df.index
     figure.marks[0].y = df[var]
     figure.title = f"{dataset[:title_len]} - {var}"
+
 
 def get_timeseries(e, dataset=None, standard_name=None, constraints=None):
     """This function returns the specified dataset time series values as a Pandas dataframe"""
@@ -125,14 +146,18 @@ def get_timeseries(e, dataset=None, standard_name=None, constraints=None):
     )
 
     df = pd.read_csv(
-        urlopen(download_url), index_col="time", parse_dates=True, skiprows=[1]
+        urlopen(download_url),
+        index_col="time",
+        parse_dates=True,
+        skiprows=[1],
     )
     return df, var
 
+
 def remove_qcstdnames(standard_names):
-    """This cell specifies the standard names to be skipped, such as 
+    """This cell specifies the standard names to be skipped, such as
     quality control-related and time-invariant variables"""
-    
+
     qc = re.compile("^.*(qc)$|^.*(data_quality)$|^.*(flag)$")
     qc_stdnames = list(filter(qc.search, standard_names))
     del qc
@@ -148,7 +173,7 @@ def remove_qcstdnames(standard_names):
     ]
 
     skip_stdnames.extend(qc_stdnames)
-    del qc_stdnames    
+    del qc_stdnames
 
     for skip_stdname in skip_stdnames:
         try:
@@ -159,73 +184,75 @@ def remove_qcstdnames(standard_names):
 
     return standard_names
 
+
 def get_valid_stdnames(server_name):
-    """Find all the `standard_name` attributes that exist on 
+    """Find all the `standard_name` attributes that exist on
     this ERDDAP endpoint, using [ERDDAP's "categorize" service]
     (http://www.neracoos.org/erddap/categorize/index.html)"""
 
     server = servers[server_name]
     server_url = server.get("url")
-    
+
     # global e
     e = ERDDAP(server=server_url, protocol="tabledap")
-    
+
     url_standard_names = f"{server_url}/categorize/standard_name/index.csv"
     df = pd.read_csv(urlopen(url_standard_names), skiprows=[1, 2])
     standard_names = list(df["Category"].values)
 
     standard_names = remove_qcstdnames(standard_names)
 
-    valid_standard_names = []    
+    valid_standard_names = []
     count = 0
-    
+
     print(
-        "Checking the variables available for this server. This might take up to a couple of minutes...\n"
+        "Checking the variables available for this server. This might take up to a couple of minutes...\n",
     )
-    
+
     for standard_name in standard_names:
-    
+
         count += 1
-    
+
         if count == np.floor(len(standard_names) / 2):
             print("Halfway there...\n")
         elif count == np.floor((len(standard_names) / 4) * 3):
             print("Almost done...\n")
         elif count == (len(standard_names)):
             print("Done!")
-    
+
         try:
-    
+
             features, datasets = stdname2geojson(
                 e,
                 standard_name,
                 server.get("cdm_data_type"),
                 server.get("min_time"),
                 server.get("max_time"),
-                server.get("skip_datasets")
+                server.get("skip_datasets"),
             )
         except NameError:
             continue
-    
+
         try:
-    
+
             var = e.get_var_by_attr(
                 dataset_id=datasets[0],
                 standard_name=lambda v: str(v).lower() == standard_name.lower(),
             )
-    
+
             if var != []:
                 valid_standard_names.append(standard_name)
-    
+
         except IndexError:
             del features, datasets
             continue
-    
+
     return valid_standard_names, server, e
+
 
 def plot_datasets(server, e):
     """This defines the initial ipyleaflet map"""
-	
+
     map = ipyl.Map(
         center=server.get("center"),
         zoom=server.get("zoom"),
@@ -240,7 +267,7 @@ def plot_datasets(server, e):
         server.get("max_time"),
         server.get("skip_datasets"),
     )
-    
+
     dataset_id = datasets[0]
     feature_layer = ipyl.GeoJSON(data=features)
 
@@ -248,21 +275,26 @@ def plot_datasets(server, e):
     map.layers = [map.layers[0], feature_layer]
     return map, feature_layer, datasets
 
+
 def plot_timeseries(server, e, dataset_id):
     """This defines the initial bqplot time series plot"""
     dt_x = bq.DateScale()
     sc_y = bq.LinearScale()
-    
+
     constraints = {"time>=": server.get("min_time"), "time<=": server.get("max_time")}
-    
-    df, var = get_timeseries(e=e,
+
+    df, var = get_timeseries(
+        e=e,
         dataset=dataset_id,
         standard_name=server.get("standard_name"),
         constraints=constraints,
     )
     def_tt = bq.Tooltip(fields=["y"], formats=[".2f"], labels=["value"])
     time_series = bq.Lines(
-        x=df.index, y=df[var], scales={"x": dt_x, "y": sc_y}, tooltip=def_tt
+        x=df.index,
+        y=df[var],
+        scales={"x": dt_x, "y": sc_y},
+        tooltip=def_tt,
     )
     ax_x = bq.Axis(scale=dt_x, label="Time")
     ax_y = bq.Axis(scale=sc_y, orientation="vertical")
@@ -271,6 +303,7 @@ def plot_timeseries(server, e, dataset_id):
     figure.layout.height = "300px"
     figure.layout.width = "800px"
     return figure
+
 
 def space():
     ispace = ipyw.HTML(
