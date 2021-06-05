@@ -100,12 +100,12 @@ def f_widget_std_names(server,valid_standard_names):
 
 def f_widget_search_min_time(server):
     """Create a text widget to enter the search minimum time for the datasets search"""
-	widget_search_min_time = ipyw.Text(
-		value=server.get("min_time").to_datetime_string(),
-		description="Search Min",
-		disabled=False,
-		)
-	return widget_search_min_time
+    widget_search_min_time = ipyw.Text(
+        value=server.get("min_time").to_datetime_string(),
+        description="Search Min",
+        disabled=False,
+        )
+    return widget_search_min_time
 
 def f_widget_search_max_time(server):
     """Create a text widget to enter the search maximum time for the datasets search"""
