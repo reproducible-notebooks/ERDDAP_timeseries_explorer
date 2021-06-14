@@ -47,7 +47,7 @@ def search_datasets(e, standard_name, cdm_data_type, min_time, max_time, skip_da
                 continue
 
     except HTTPError:
-        df = []
+        pass
 
     return df
 
