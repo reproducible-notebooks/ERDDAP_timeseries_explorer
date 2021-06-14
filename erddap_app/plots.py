@@ -43,7 +43,7 @@ def search_datasets(e, standard_name, cdm_data_type, min_time, max_time, skip_da
             try:
                 row = df.loc[df["Dataset ID"] == skip_dataset].index[0]
                 df.drop(row, inplace=True)
-            except IndexError:
+            except IndexError:  # this error arises when the stdname doesn't have any datasets to be skipped.
                 continue
 
     except HTTPError:
@@ -224,7 +224,7 @@ def get_valid_stdnames(server_name):
                 server.get("max_time"),
                 server.get("skip_datasets"),
             )
-        except NameError:
+        except NameError:  # this error arises when there is no df for this stdname.
             continue
 
         try:
@@ -237,7 +237,7 @@ def get_valid_stdnames(server_name):
             if var != []:
                 valid_standard_names.append(standard_name)
 
-        except IndexError:
+        except IndexError:  # this error arises when the only dataset available for this stdname was skipped.
             del features, datasets
             continue
 
