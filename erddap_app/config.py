@@ -45,6 +45,6 @@ servers = {
         "zoom": 6,
         "max_time": now,
         "min_time": now.subtract(weeks=2),
-        "skip_datasets": ["cwwcNDBCMet"],
+        "skip_datasets": ["cwwcNDBCMet", "UNH_CML"],
     },
 }
