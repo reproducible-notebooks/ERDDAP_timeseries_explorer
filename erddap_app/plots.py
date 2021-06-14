@@ -164,6 +164,7 @@ def remove_qcstdnames(standard_names):
         "station_name",
         "time",
         "offset_time",
+        "altitude",
     ]
 
     skip_stdnames.extend(qc_stdnames)
