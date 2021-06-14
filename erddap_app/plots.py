@@ -6,7 +6,6 @@ import ipyleaflet as ipyl
 import ipywidgets as ipyw
 import numpy as np
 import pandas as pd
-import pendulum
 from erddapy import ERDDAP
 from erddapy.url_handling import urlopen
 from requests import HTTPError
@@ -44,17 +43,12 @@ def search_datasets(e, standard_name, cdm_data_type, min_time, max_time, skip_da
             try:
                 row = df.loc[df["Dataset ID"] == skip_dataset].index[0]
                 df.drop(row, inplace=True)
-            except IndexError:
+            except IndexError:  # this error arises when the stdname doesn't have any datasets to be skipped.
                 continue
 
     except HTTPError:
         df = []
-        if len(var) > 14:
-            v = f"{standard_name[:15]}..."
-        else:
-            v = standard_name
-        figure.title = f"No {v} found in this time range. Pick another variable."
-        figure.marks[0].y = 0.0 * figure.marks[0].y
+
     return df
 
 
@@ -230,7 +224,7 @@ def get_valid_stdnames(server_name):
                 server.get("max_time"),
                 server.get("skip_datasets"),
             )
-        except NameError:
+        except NameError:  # this error arises when there is no df for this stdname.
             continue
 
         try:
@@ -243,7 +237,7 @@ def get_valid_stdnames(server_name):
             if var != []:
                 valid_standard_names.append(standard_name)
 
-        except IndexError:
+        except IndexError:  # this error arises when the only dataset available for this stdname was skipped.
             del features, datasets
             continue
 
@@ -268,7 +262,6 @@ def plot_datasets(server, e):
         server.get("skip_datasets"),
     )
 
-    dataset_id = datasets[0]
     feature_layer = ipyl.GeoJSON(data=features)
 
     # feature_layer.on_click(map_click_handler(e=e))

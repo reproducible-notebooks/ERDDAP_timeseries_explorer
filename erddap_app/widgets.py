@@ -1,36 +1,37 @@
 import ipyleaflet as ipyl
 import ipywidgets as ipyw
 import pendulum
-from requests import HTTPError
 
 from erddap_app.plots import stdname2geojson, update_timeseries_plot
 
+# from requests import HTTPError
 
-def map_click_handler(event=None, id=None, properties=None, feature=None):
-    """The map_click_handler function updates the time series plot when a station marker is clicked"""
 
-    dataset_id = properties["datasetID"]
+# def map_click_handler(event=None, id=None, properties=None, feature=None):
+#     """The map_click_handler function updates the time series plot when a station marker is clicked"""
 
-    min_time = pendulum.parse(widget_search_min_time.value)
-    max_time = pendulum.parse(widget_search_max_time.value)
-    constraints = {"time>=": min_time, "time<=": max_time}
+#     dataset_id = properties["datasetID"]
 
-    standard_name = widget_std_names.value
-    widget_dsnames.value = dataset_id
+#     min_time = pendulum.parse(widget_search_min_time.value)
+#     max_time = pendulum.parse(widget_search_max_time.value)
+#     constraints = {"time>=": min_time, "time<=": max_time}
 
-    try:
-        update_timeseries_plot(
-            e,
-            dataset=dataset_id,
-            standard_name=standard_name,
-            constraints=constraints,
-        )
-    except HTTPError:
-        print(
-            "No",
-            standard_name,
-            "data for this station. Please choose another station.",
-        )
+#     standard_name = widget_std_names.value
+#     widget_dsnames.value = dataset_id
+
+#     try:
+#         update_timeseries_plot(
+#             e,
+#             dataset=dataset_id,
+#             standard_name=standard_name,
+#             constraints=constraints,
+#         )
+#     except HTTPError:
+#         print(
+#             "No",
+#             standard_name,
+#             "data for this station. Please choose another station.",
+#         )
 
 
 def widget_replot_button_handler(change):
@@ -137,7 +138,7 @@ def f_widget_search_max_time(server):
     return widget_search_max_time
 
 
-"""Create the Update Search button"""
+# Create the Update Search button
 widget_search_button = ipyw.Button(
     value=False,
     description="Update Search",
@@ -166,7 +167,7 @@ def f_widget_plot_stop_time(server):
     return widget_plot_stop_time
 
 
-"""Create the Update TimeSeries button """
+# Create the Update TimeSeries button
 widget_replot_button = ipyw.Button(
     value=False,
     description="Update TimeSeries",
