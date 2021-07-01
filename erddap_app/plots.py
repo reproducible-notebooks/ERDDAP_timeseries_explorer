@@ -44,10 +44,10 @@ def search_datasets(e, standard_name, cdm_data_type, min_time, max_time, skip_da
                 row = df.loc[df["Dataset ID"] == skip_dataset].index[0]
                 df.drop(row, inplace=True)
             except IndexError:  # this error arises when the stdname doesn't have any datasets to be skipped.
-                continue
+                pass
 
     except HTTPError:
-        pass
+        df = pd.DataFrame([])
 
     return df
 
