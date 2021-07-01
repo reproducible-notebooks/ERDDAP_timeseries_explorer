@@ -165,6 +165,9 @@ def remove_qcstdnames(standard_names):
         "time",
         "offset_time",
         "altitude",
+        "battery_voltage",
+        "panel_temperature",
+        "webcam",
     ]
 
     skip_stdnames.extend(qc_stdnames)
@@ -174,7 +177,7 @@ def remove_qcstdnames(standard_names):
         try:
             standard_names.remove(skip_stdname)
         except ValueError:
-            continue
+            pass
     del skip_stdname
 
     return standard_names
