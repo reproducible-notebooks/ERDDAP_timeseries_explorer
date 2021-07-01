@@ -218,20 +218,16 @@ def get_valid_stdnames(server_name):
         elif count == (len(standard_names)):
             print("Done!")
 
-        try:
+        features, datasets = stdname2geojson(
+            e,
+            standard_name,
+            server.get("cdm_data_type"),
+            server.get("min_time"),
+            server.get("max_time"),
+            server.get("skip_datasets"),
+        )
 
-            features, datasets = stdname2geojson(
-                e,
-                standard_name,
-                server.get("cdm_data_type"),
-                server.get("min_time"),
-                server.get("max_time"),
-                server.get("skip_datasets"),
-            )
-        except NameError:  # this error arises when there is no df for this stdname.
-            continue
-
-        try:
+        if len(datasets) > 0:  # if there is at least one dataset with this data
 
             var = e.get_var_by_attr(
                 dataset_id=datasets[0],
@@ -241,9 +237,7 @@ def get_valid_stdnames(server_name):
             if var != []:
                 valid_standard_names.append(standard_name)
 
-        except IndexError:  # this error arises when the only dataset available for this stdname was skipped.
-            del features, datasets
-            continue
+        del features, datasets
 
     return valid_standard_names, server, e
 
