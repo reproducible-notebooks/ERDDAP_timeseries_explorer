@@ -44,10 +44,10 @@ def search_datasets(e, standard_name, cdm_data_type, min_time, max_time, skip_da
                 row = df.loc[df["Dataset ID"] == skip_dataset].index[0]
                 df.drop(row, inplace=True)
             except IndexError:  # this error arises when the stdname doesn't have any datasets to be skipped.
-                continue
+                pass
 
     except HTTPError:
-        df = []
+        df = pd.DataFrame([])
 
     return df
 
@@ -164,6 +164,10 @@ def remove_qcstdnames(standard_names):
         "station_name",
         "time",
         "offset_time",
+        "altitude",
+        "battery_voltage",
+        "panel_temperature",
+        "webcam",
     ]
 
     skip_stdnames.extend(qc_stdnames)
@@ -173,7 +177,7 @@ def remove_qcstdnames(standard_names):
         try:
             standard_names.remove(skip_stdname)
         except ValueError:
-            continue
+            pass
     del skip_stdname
 
     return standard_names
@@ -214,20 +218,16 @@ def get_valid_stdnames(server_name):
         elif count == (len(standard_names)):
             print("Done!")
 
-        try:
+        features, datasets = stdname2geojson(
+            e,
+            standard_name,
+            server.get("cdm_data_type"),
+            server.get("min_time"),
+            server.get("max_time"),
+            server.get("skip_datasets"),
+        )
 
-            features, datasets = stdname2geojson(
-                e,
-                standard_name,
-                server.get("cdm_data_type"),
-                server.get("min_time"),
-                server.get("max_time"),
-                server.get("skip_datasets"),
-            )
-        except NameError:  # this error arises when there is no df for this stdname.
-            continue
-
-        try:
+        if len(datasets) > 0:  # if there is at least one dataset with this data
 
             var = e.get_var_by_attr(
                 dataset_id=datasets[0],
@@ -237,9 +237,7 @@ def get_valid_stdnames(server_name):
             if var != []:
                 valid_standard_names.append(standard_name)
 
-        except IndexError:  # this error arises when the only dataset available for this stdname was skipped.
-            del features, datasets
-            continue
+        del features, datasets
 
     return valid_standard_names, server, e
 
