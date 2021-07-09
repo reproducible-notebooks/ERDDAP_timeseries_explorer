@@ -73,4 +73,4 @@ form = ipyw.Box(
     ),
 )
 
-form
+display(form)
