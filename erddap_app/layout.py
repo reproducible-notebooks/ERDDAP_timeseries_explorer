@@ -1,5 +1,6 @@
 import ipywidgets as ipyw
 from __main__ import server_name
+from IPython.display import display
 
 from erddap_app.plots import get_valid_stdnames, plot_datasets, plot_timeseries, space
 from erddap_app.widgets import (
