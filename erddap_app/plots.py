@@ -104,7 +104,7 @@ def update_timeseries_plot(
 ):
     """This function updates the time series plot when the Update Search
     or the Update TimeSeries button is selected."""
-    from __main__ import figure
+    from erddap_app.layout import figure
 
     df, var = get_timeseries(
         e,

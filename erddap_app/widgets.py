@@ -37,7 +37,7 @@ from erddap_app.plots import stdname2geojson, update_timeseries_plot
 def widget_replot_button_handler(change):
     """The widget_replot_button_handler function updates the time series plot when the
     Update TimeSeries button is selected"""
-    from __main__ import (
+    from erddap_app.layout import (
         e,
         widget_dsnames,
         widget_plot_start_time,
@@ -61,7 +61,7 @@ def widget_replot_button_handler(change):
 def widget_search_button_handler(change):
     """The widget_search_button_handler function updates the map when the
     Update Search button is selected"""
-    from __main__ import (
+    from erddap_app.layout import (
         e,
         map,
         server,
