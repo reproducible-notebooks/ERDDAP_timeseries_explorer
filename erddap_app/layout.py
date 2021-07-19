@@ -1,76 +1,83 @@
 import re
-import pendulum
-import numpy as np
-import pandas as pd
+from urllib.parse import quote
+
 import bqplot as bq
 import ipyleaflet as ipyl
 import ipywidgets as ipyw
-from urllib.parse import quote
-from requests import HTTPError
+import numpy as np
+import pandas as pd
+import pendulum
 from erddapy import ERDDAP
 from erddapy.url_handling import urlopen
-from erddap_app.config import servers
 from IPython.display import display
+from requests import HTTPError
 
-# gets standard names
-valid_standard_names, server, e = get_valid_stdnames(server_name)
-
-
-# Creates map and timeseries plot
-map, feature_layer, datasets = plot_datasets(server, e)
-figure = plot_timeseries(server, e, datasets[0])
+from erddap_app.config import servers
 
 
-# Creates widgets
-widget_std_names = f_widget_std_names(server, valid_standard_names)
-widget_search_min_time = f_widget_search_min_time(server)
-widget_search_max_time = f_widget_search_max_time(server)
-widget_plot_start_time = f_widget_plot_start_time(server)
-widget_plot_stop_time = f_widget_plot_stop_time(server)
-widget_dsnames = f_widget_dsnames(datasets)
+def layout(server_name):
+    global server, e, map
+    global widget_dsnames, widget_plot_start_time, widget_plot_stop_time
+    global widget_std_names, widget_search_max_time, widget_search_min_time
+    global figure
 
-widget_replot_button.on_click(widget_replot_button_handler)
-widget_search_button.on_click(widget_search_button_handler)
+    # gets standard names
+    valid_standard_names, server, e = get_valid_stdnames(server_name)
 
-# Specifies the widget layout
-ispace = space()
+    # Creates map and timeseries plot
+    map, feature_layer, datasets = plot_datasets(server, e)
+    figure = plot_timeseries(server, e, datasets[0])
 
-form_item_layout = ipyw.Layout(
-    display="flex",
-    flex_flow="column",
-    justify_content="space-between",
-)
+    # Creates widgets
+    widget_std_names = f_widget_std_names(server, valid_standard_names)
+    widget_search_min_time = f_widget_search_min_time(server)
+    widget_search_max_time = f_widget_search_max_time(server)
+    widget_plot_start_time = f_widget_plot_start_time(server)
+    widget_plot_stop_time = f_widget_plot_stop_time(server)
+    widget_dsnames = f_widget_dsnames(datasets)
 
-col1 = ipyw.Box([map, figure], layout=form_item_layout)
-col2 = ipyw.Box(
-    [
-        widget_std_names,
-        widget_search_min_time,
-        widget_search_max_time,
-        widget_search_button,
-        ispace,
-        widget_dsnames,
-        widget_plot_start_time,
-        widget_plot_stop_time,
-        widget_replot_button,
-    ],
-    layout=form_item_layout,
-)
+    widget_replot_button.on_click(widget_replot_button_handler)
+    widget_search_button.on_click(widget_search_button_handler)
 
-form_items = [col1, col2]
+    # Specifies the widget layout
+    ispace = space()
 
-form = ipyw.Box(
-    form_items,
-    layout=ipyw.Layout(
+    form_item_layout = ipyw.Layout(
         display="flex",
-        flex_flow="row",
-        border="solid 2px",
-        align_items="flex-start",
-        width="100%",
-    ),
-)
+        flex_flow="column",
+        justify_content="space-between",
+    )
 
-display(form)
+    col1 = ipyw.Box([map, figure], layout=form_item_layout)
+    col2 = ipyw.Box(
+        [
+            widget_std_names,
+            widget_search_min_time,
+            widget_search_max_time,
+            widget_search_button,
+            ispace,
+            widget_dsnames,
+            widget_plot_start_time,
+            widget_plot_stop_time,
+            widget_replot_button,
+        ],
+        layout=form_item_layout,
+    )
+
+    form_items = [col1, col2]
+
+    form = ipyw.Box(
+        form_items,
+        layout=ipyw.Layout(
+            display="flex",
+            flex_flow="row",
+            border="solid 2px",
+            align_items="flex-start",
+            width="100%",
+        ),
+    )
+
+    display(form)
 
 
 def point(dataset, lon, lat, nchar):
@@ -251,7 +258,6 @@ def get_valid_stdnames(server_name):
     server = servers[server_name]
     server_url = server.get("url")
 
-    # global e
     e = ERDDAP(server=server_url, protocol="tabledap")
 
     url_standard_names = f"{server_url}/categorize/standard_name/index.csv"
