@@ -1,20 +1,16 @@
+import re
+import pendulum
+import numpy as np
+import pandas as pd
+import bqplot as bq
+import ipyleaflet as ipyl
 import ipywidgets as ipyw
-from __main__ import server_name
+from urllib.parse import quote
+from requests import HTTPError
+from erddapy import ERDDAP
+from erddapy.url_handling import urlopen
+from erddap_app.config import servers
 from IPython.display import display
-
-from erddap_app.plots import get_valid_stdnames, plot_datasets, plot_timeseries, space
-from erddap_app.widgets import (
-    f_widget_dsnames,
-    f_widget_plot_start_time,
-    f_widget_plot_stop_time,
-    f_widget_search_max_time,
-    f_widget_search_min_time,
-    f_widget_std_names,
-    widget_replot_button,
-    widget_replot_button_handler,
-    widget_search_button,
-    widget_search_button_handler,
-)
 
 # gets standard names
 valid_standard_names, server, e = get_valid_stdnames(server_name)
