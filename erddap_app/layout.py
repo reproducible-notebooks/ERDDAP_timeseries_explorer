@@ -63,30 +63,30 @@ def get_dslocation(e, cdm_data_type, min_time, max_time):
     return df
 
 
-def get_datasets(e, standard_name, cdm_data_type, min_time, max_time, skip_datasets):
+def get_datasets(e, stdname, cdm_data_type, min_time, max_time, skip_datasets):
     """This function returns GeoJSON containing lon, lat and dataset ID
     for all matching stations"""
 
-    dfsd = search_datasets(
-        e,
-        standard_name,
-        cdm_data_type,
-        min_time,
-        max_time,
-        skip_datasets,
-    )
-    if not dfsd.empty:
-        datasets = dfsd["Dataset ID"].values
+    dfsd = get_dsinfo(e,
+                      stdname,
+                      cdm_data_type,
+                      min_time,
+                      max_time,
+                      skip_datasets,
+                      )
 
-        dfad = all_datasets_locations(e, cdm_data_type, min_time, max_time)
+    if not dfsd.empty:
+        dfad = get_dslocation(e,
+                              cdm_data_type, 
+                              min_time, 
+                              max_time,
+                             )
         df = dfad[dfad["datasetID"].isin(dfsd["Dataset ID"])]
-        geojson = {
-            "features": [point(row[1], row[2], row[3], 3) for row in df.itertuples()],
-        }
+        
     else:
-        geojson = {"features": []}
-        datasets = []
-    return geojson, datasets
+        df = pd.DataFrame()
+
+    return df 
 
 
 def get_timeseries(e, dataset=None, standard_name=None, constraints=None):
