@@ -117,12 +117,12 @@ def get_timeseries(e, dataset=None, standard_name=None, constraints=None):
     return df, var
 
 
-def remove_qcstdnames(standard_names):
+def remove_qcstdnames(stdnames):
     """This cell specifies the standard names to be skipped, such as
     quality control-related and time-invariant variables"""
 
     qc = re.compile("^.*(qc)$|^.*(data_quality)$|^.*(flag)$")
-    qc_stdnames = list(filter(qc.search, standard_names))
+    qc_stdnames = list(filter(qc.search, stdnames))
     del qc
 
     skip_stdnames = [
@@ -144,12 +144,12 @@ def remove_qcstdnames(standard_names):
 
     for skip_stdname in skip_stdnames:
         try:
-            standard_names.remove(skip_stdname)
+            stdnames.remove(skip_stdname)
         except ValueError:
             pass
     del skip_stdname
 
-    return standard_names
+    return stdnames
 
 
 def get_valid_stdnames(server_name):
