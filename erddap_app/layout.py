@@ -44,18 +44,22 @@ def get_dsinfo(e, stdname, cdm_data_type, min_time, max_time, skip_datasets):
 
 def get_dslocation(e, cdm_data_type, min_time, max_time):
     """This function returns the lon,lat values from all datasets"""
+    max_time_str = max_time.strftime("%Y-%m-%d %H:%M:%S")
+    min_time_str = min_time.strftime("%Y-%m-%d %H:%M:%S")
+
     url_dset = (
         f"{e.server}"
         "/tabledap/allDatasets.csv?"
         "datasetID,minLongitude,minLatitude&"
         f'cdm_data_type="{cdm_data_type}"'
-        f"&minTime<={max_time.to_datetime_string()}"
-        f"&maxTime>={min_time.to_datetime_string()}"
+        f"&minTime<={max_time_str}"
+        f"&maxTime>={min_time_str}"
     )
 
     url_dataset = quote(url_dset, safe=":/?&= ")
     del url_dset
     df = pd.read_csv(urlopen(url_dataset), skiprows=[1])
+    
     return df
 
 
