@@ -63,7 +63,7 @@ def get_dslocation(e, cdm_data_type, min_time, max_time):
     return df
 
 
-def stdname2geojson(e, standard_name, cdm_data_type, min_time, max_time, skip_datasets):
+def get_datasets(e, standard_name, cdm_data_type, min_time, max_time, skip_datasets):
     """This function returns GeoJSON containing lon, lat and dataset ID
     for all matching stations"""
 
