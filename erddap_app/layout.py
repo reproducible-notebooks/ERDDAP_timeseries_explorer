@@ -89,35 +89,42 @@ def get_datasets(e, stdname, cdm_data_type, min_time, max_time, skip_datasets):
     return df 
 
 
-def get_timeseries(e, dataset=None, standard_name=None, constraints=None):
+def get_timeseries(e, dataset=None, stdname=None, constraints=None):
     """This function returns the specified dataset time series values as a Pandas dataframe"""
 
-    var = e.get_var_by_attr(
-        dataset_id=dataset,
-        standard_name=lambda v: str(v).lower() == standard_name.lower(),
-    )
+    var = e.get_var_by_attr(dataset_id=dataset,
+                            standard_name=lambda v: str(v).lower() == stdname.lower(),
+                           )
     if var:
         var = var[0]
     else:
-        raise ValueError(f"Cannot get data for {standard_name}.")
+        raise ValueError(f"Cannot get data for {stdname}.")
         # We should filter out only valid standard_names for each dataset!
         # df = pd.read_csv(e.get_info_url(response="csv"))
         # df.loc[df["Attribute Name"] == "standard_name"]["Value"].values
 
-    download_url = e.get_download_url(
-        dataset_id=dataset,
-        constraints=constraints,
-        variables=["time", var],
-        response="csv",
-    )
+    download_url = e.get_download_url(dataset_id=dataset,
+                                      constraints=constraints,
+                                      variables=["time", var],
+                                      response="csv",
+                                     )
 
-    df = pd.read_csv(
-        urlopen(download_url),
-        index_col="time",
-        parse_dates=True,
-        skiprows=[1],
-    )
-    return df, var
+    df = pd.read_csv(urlopen(download_url),
+                     index_col="time",
+                    )
+    
+    # getting the units for y-axis label
+    unit = df.iloc[0,0]
+
+    # dropping the line with the unit
+    df=df.drop(labels=df.index[0])
+
+    # adjusting the data types
+    df.index = pd.to_datetime(df.index, utc=True) # df.time = df.time.astype('datetime64[ns]')
+    df[var] = df[var].astype(float)
+
+    return df, var, unit
+
 
 
 def remove_qcstdnames(stdnames):
