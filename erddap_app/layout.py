@@ -209,26 +209,3 @@ def get_valid_stdnames(server_name):
     return valid_stdnames, server, e
 
 
-def plot_datasets(server, e):
-    """This defines the initial ipyleaflet map"""
-
-    map = ipyl.Map(
-        center=server.get("center"),
-        zoom=server.get("zoom"),
-        layout=dict(width="750px", height="350px"),
-    )
-
-    features, datasets = stdname2geojson(
-        e,
-        server.get("standard_name"),
-        server.get("cdm_data_type"),
-        server.get("min_time"),
-        server.get("max_time"),
-        server.get("skip_datasets"),
-    )
-
-    feature_layer = ipyl.GeoJSON(data=features)
-
-    # feature_layer.on_click(map_click_handler(e=e))
-    map.layers = [map.layers[0], feature_layer]
-    return map, feature_layer, datasets
