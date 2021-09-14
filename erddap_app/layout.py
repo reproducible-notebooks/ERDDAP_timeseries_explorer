@@ -209,3 +209,28 @@ def get_valid_stdnames(server_name):
     return valid_stdnames, server, e
 
 
+def replot_dsmap(stdname, timerange):    
+    
+    df_dsmap = get_datasets(e, 
+                          stdname, 
+                          server.get("cdm_data_type"), 
+                          timerange[0], 
+                          timerange[1], 
+                          server.get("skip_datasets"),
+                          )
+    
+    easting, northing = hv.util.transform.lon_lat_to_easting_northing(df_dsmap.minLongitude,
+                                                                      df_dsmap.minLatitude
+                                                                     )
+    df_dsmap.loc[:,'easting'] = easting
+    df_dsmap['northing'] = northing 
+
+    dsmap = OSM() * df_dsmap.hvplot.points(x='easting', 
+                                         y='northing', 
+                                         hover_cols=['datasetID','minLongitude','minLatitude'],
+                                         title='Datasets', 
+                                         size=20, 
+                                         line_color='black',
+                                        )
+    
+    return dsmap
