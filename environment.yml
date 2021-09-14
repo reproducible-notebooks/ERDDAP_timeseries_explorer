@@ -8,7 +8,6 @@ dependencies:
   - pendulum
   - erddapy
   - ipykernel
-  - hvplot
-  - holoviews
-  - panel
   - bokeh
+  - pyviz::holoviews
+  - pyviz::hvplot
