@@ -1,18 +1,20 @@
 import re
 from urllib.parse import quote
 
-import bqplot as bq
-import ipyleaflet as ipyl
-import ipywidgets as ipyw
 import numpy as np
 import pandas as pd
-import pendulum
 from erddapy import ERDDAP
 from erddapy.url_handling import urlopen
-from IPython.display import display
 from requests import HTTPError
 
 from erddap_app.config import servers
+from holoviews.element.tiles import OSM
+import holoviews as hv
+import panel as pn
+import hvplot.pandas
+import bokeh
+hv.extension('bokeh') 
+pn.extension()
 
 
 def get_dsinfo(e, stdname, cdm_data_type, min_time, max_time, skip_datasets): 
