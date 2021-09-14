@@ -1,11 +1,14 @@
 name: widgets
 channels:
   - conda-forge
+  - pyviz
 dependencies:
   - python=3.8
   - pandas
   - pendulum
-  - ipyleaflet
-  - bqplot
   - erddapy
   - ipykernel
+  - hvplot
+  - holoviews
+  - panel
+  - bokeh
