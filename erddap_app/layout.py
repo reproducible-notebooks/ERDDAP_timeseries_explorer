@@ -167,57 +167,46 @@ def get_valid_stdnames(server_name):
     this ERDDAP endpoint, using [ERDDAP's "categorize" service]
     (http://www.neracoos.org/erddap/categorize/index.html)"""
 
+    global e, server    
     server = servers[server_name]
     server_url = server.get("url")
 
     e = ERDDAP(server=server_url, protocol="tabledap")
 
-    url_standard_names = f"{server_url}/categorize/standard_name/index.csv"
-    df = pd.read_csv(urlopen(url_standard_names), skiprows=[1, 2])
-    standard_names = list(df["Category"].values)
+    url_stdnames = f"{server_url}/categorize/standard_name/index.csv"
+    df = pd.read_csv(urlopen(url_stdnames), skiprows=[1, 2])
+    stdnames = list(df["Category"].values)
 
-    standard_names = remove_qcstdnames(standard_names)
+    stdnames = remove_qcstdnames(stdnames)
 
-    valid_standard_names = []
+    valid_stdnames = []
     count = 0
-
-    print(
-        "Checking the variables available for this server. This might take up to a couple of minutes...\n",
-    )
-
-    for standard_name in standard_names:
+    
+    for stdname in stdnames:
 
         count += 1
+      
+        progressbar.value = int(count/(len(stdnames))*100)
 
-        if count == np.floor(len(standard_names) / 2):
-            print("Halfway there...\n")
-        elif count == np.floor((len(standard_names) / 4) * 3):
-            print("Almost done...\n")
-        elif count == (len(standard_names)):
-            print("Done!")
+        df_stdname = get_datasets(e,
+                                   stdname,
+                                   server.get("cdm_data_type"),
+                                   server.get("min_time"),
+                                   server.get("max_time"),
+                                   server.get("skip_datasets"),
+                                   )
 
-        features, datasets = stdname2geojson(
-            e,
-            standard_name,
-            server.get("cdm_data_type"),
-            server.get("min_time"),
-            server.get("max_time"),
-            server.get("skip_datasets"),
-        )
+        if not df_stdname.empty:
 
-        if len(datasets) > 0:  # if there is at least one dataset with this data
-
-            var = e.get_var_by_attr(
-                dataset_id=datasets[0],
-                standard_name=lambda v: str(v).lower() == standard_name.lower(),
-            )
+            var = e.get_var_by_attr(dataset_id=df_stdname.datasetID.values[0],
+                                    standard_name=lambda v: str(v).lower() == stdname.lower(),
+                                   )
 
             if var != []:
-                valid_standard_names.append(standard_name)
+                valid_stdnames.append(stdname)
 
-        del features, datasets
 
-    return valid_standard_names, server, e
+    return valid_stdnames, server, e
 
 
 def plot_datasets(server, e):
