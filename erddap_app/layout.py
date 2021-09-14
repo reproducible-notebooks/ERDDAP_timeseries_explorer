@@ -33,7 +33,7 @@ def get_dsinfo(e, stdname, cdm_data_type, min_time, max_time, skip_datasets):
             try:
                 row = df.loc[df["Dataset ID"] == skip_dataset].index[0]
                 df.drop(row, inplace=True)
-            except IndexError:  # this error arises when the stdname doesn't have any datasets to be skipped.
+            except IndexError:  
                 pass
 
     except HTTPError:
@@ -42,7 +42,7 @@ def get_dsinfo(e, stdname, cdm_data_type, min_time, max_time, skip_datasets):
     return df
 
 
-def all_datasets_locations(e, cdm_data_type, min_time, max_time):
+def get_dslocation(e, cdm_data_type, min_time, max_time):
     """This function returns the lon,lat values from all datasets"""
     url_dset = (
         f"{e.server}"
