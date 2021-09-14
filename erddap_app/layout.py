@@ -234,3 +234,10 @@ def replot_dsmap(stdname, timerange):
                                         )
     
     return dsmap
+
+
+progressbar = pn.indicators.Progress(name='Checking the variables available for this server', 
+                                     bar_color='info', 
+                                     value=0, 
+                                     width=200,
+                                    )
