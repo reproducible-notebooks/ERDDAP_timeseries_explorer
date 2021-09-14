@@ -15,18 +15,17 @@ from requests import HTTPError
 from erddap_app.config import servers
 
 
-def search_datasets(e, standard_name, cdm_data_type, min_time, max_time, skip_datasets):
+def get_dsinfo(e, stdname, cdm_data_type, min_time, max_time, skip_datasets): 
     """This function finds all the datasets with a given standard_name in
     the specified time period, and return GeoJSON"""
 
-    search_url = e.get_search_url(
-        response="csv",
-        cdm_data_type=cdm_data_type.lower(),
-        items_per_page=100000,
-        standard_name=standard_name,
-        min_time=min_time,
-        max_time=max_time,
-    )
+    search_url = e.get_search_url(response="csv",
+                                  cdm_data_type=cdm_data_type.lower(),
+                                  items_per_page=100000,
+                                  standard_name=stdname,
+                                  min_time=min_time,
+                                  max_time=max_time,
+                                 )
     try:
         df = pd.read_csv(urlopen(search_url))
 
