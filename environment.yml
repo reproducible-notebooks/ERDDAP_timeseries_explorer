@@ -8,5 +8,5 @@ dependencies:
   - erddapy
   - ipykernel
   - bokeh
-  - pyviz::holoviews
-  - pyviz::hvplot
+  - holoviews
+  - hvplot
