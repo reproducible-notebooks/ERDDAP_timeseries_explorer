@@ -1,3 +1,5 @@
+import datetime
+
 import pendulum
 
 now = pendulum.now(tz="utc")
@@ -43,8 +45,8 @@ servers = {
         "cdm_data_type": "TimeSeries",
         "center": [42.5, -68],
         "zoom": 6,
-        "max_time": now,
-        "min_time": now.subtract(weeks=2),
+        "max_time": datetime.datetime.today(),
+        "min_time": datetime.datetime.today() - datetime.timedelta(days=14),
         "skip_datasets": ["cwwcNDBCMet", "UNH_CML", "UNH_WBD"],
     },
 }

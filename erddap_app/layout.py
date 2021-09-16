@@ -1,97 +1,22 @@
+import datetime
 import re
 from urllib.parse import quote
 
-import bqplot as bq
-import ipyleaflet as ipyl
-import ipywidgets as ipyw
-import numpy as np
+import holoviews as hv
 import pandas as pd
-import pendulum
+import panel as pn
 from erddapy import ERDDAP
 from erddapy.url_handling import urlopen
-from IPython.display import display
+from holoviews.element.tiles import OSM
 from requests import HTTPError
 
 from erddap_app.config import servers
 
-
-def layout(server_name):
-    global server, e, map
-    global widget_dsnames, widget_plot_start_time, widget_plot_stop_time
-    global widget_std_names, widget_search_max_time, widget_search_min_time
-    global figure
-
-    # gets standard names
-    valid_standard_names, server, e = get_valid_stdnames(server_name)
-
-    # Creates map and timeseries plot
-    map, feature_layer, datasets = plot_datasets(server, e)
-    figure = plot_timeseries(server, e, datasets[0])
-
-    # Creates widgets
-    widget_std_names = f_widget_std_names(server, valid_standard_names)
-    widget_search_min_time = f_widget_search_min_time(server)
-    widget_search_max_time = f_widget_search_max_time(server)
-    widget_plot_start_time = f_widget_plot_start_time(server)
-    widget_plot_stop_time = f_widget_plot_stop_time(server)
-    widget_dsnames = f_widget_dsnames(datasets)
-
-    widget_replot_button.on_click(widget_replot_button_handler)
-    widget_search_button.on_click(widget_search_button_handler)
-
-    # Specifies the widget layout
-    ispace = space()
-
-    form_item_layout = ipyw.Layout(
-        display="flex",
-        flex_flow="column",
-        justify_content="space-between",
-    )
-
-    col1 = ipyw.Box([map, figure], layout=form_item_layout)
-    col2 = ipyw.Box(
-        [
-            widget_std_names,
-            widget_search_min_time,
-            widget_search_max_time,
-            widget_search_button,
-            ispace,
-            widget_dsnames,
-            widget_plot_start_time,
-            widget_plot_stop_time,
-            widget_replot_button,
-        ],
-        layout=form_item_layout,
-    )
-
-    form_items = [col1, col2]
-
-    form = ipyw.Box(
-        form_items,
-        layout=ipyw.Layout(
-            display="flex",
-            flex_flow="row",
-            border="solid 2px",
-            align_items="flex-start",
-            width="100%",
-        ),
-    )
-
-    display(form)
+hv.extension("bokeh")
+pn.extension()
 
 
-def point(dataset, lon, lat, nchar):
-    """This function puts lon,lat and datasetID into a GeoJSON feature"""
-    geojsonFeature = {
-        "type": "Feature",
-        "properties": {"datasetID": dataset, "short_dataset_name": dataset[:nchar]},
-        "geometry": {"type": "Point", "coordinates": [lon, lat]},
-    }
-    geojsonFeature["properties"]["style"] = {"color": "Grey"}
-    return geojsonFeature
-
-
-def search_datasets(e, standard_name, cdm_data_type, min_time, max_time, skip_datasets):
+def get_dsinfo(e, stdname, cdm_data_type, min_time, max_time, skip_datasets):
     """This function finds all the datasets with a given standard_name in
     the specified time period, and return GeoJSON"""
 
@@ -99,7 +24,7 @@ def search_datasets(e, standard_name, cdm_data_type, min_time, max_time, skip_da
         response="csv",
         cdm_data_type=cdm_data_type.lower(),
         items_per_page=100000,
-        standard_name=standard_name,
+        standard_name=stdname,
         min_time=min_time,
         max_time=max_time,
     )
@@ -110,7 +35,7 @@ def search_datasets(e, standard_name, cdm_data_type, min_time, max_time, skip_da
             try:
                 row = df.loc[df["Dataset ID"] == skip_dataset].index[0]
                 df.drop(row, inplace=True)
-            except IndexError:  # this error arises when the stdname doesn't have any datasets to be skipped.
+            except IndexError:
                 pass
 
     except HTTPError:
@@ -119,82 +44,66 @@ def search_datasets(e, standard_name, cdm_data_type, min_time, max_time, skip_da
     return df
 
 
-def all_datasets_locations(e, cdm_data_type, min_time, max_time):
+def get_dslocation(e, cdm_data_type, min_time, max_time):
     """This function returns the lon,lat values from all datasets"""
+    max_time_str = max_time.strftime("%Y-%m-%d %H:%M:%S")
+    min_time_str = min_time.strftime("%Y-%m-%d %H:%M:%S")
+
     url_dset = (
         f"{e.server}"
         "/tabledap/allDatasets.csv?"
         "datasetID,minLongitude,minLatitude&"
         f'cdm_data_type="{cdm_data_type}"'
-        f"&minTime<={max_time.to_datetime_string()}"
-        f"&maxTime>={min_time.to_datetime_string()}"
+        f"&minTime<={max_time_str}"
+        f"&maxTime>={min_time_str}"
     )
 
     url_dataset = quote(url_dset, safe=":/?&= ")
     del url_dset
     df = pd.read_csv(urlopen(url_dataset), skiprows=[1])
+
     return df
 
 
-def stdname2geojson(e, standard_name, cdm_data_type, min_time, max_time, skip_datasets):
+def get_datasets(e, stdname, cdm_data_type, min_time, max_time, skip_datasets):
     """This function returns GeoJSON containing lon, lat and dataset ID
     for all matching stations"""
 
-    dfsd = search_datasets(
+    dfsd = get_dsinfo(
         e,
-        standard_name,
+        stdname,
         cdm_data_type,
         min_time,
         max_time,
         skip_datasets,
     )
+
     if not dfsd.empty:
-        datasets = dfsd["Dataset ID"].values
-
-        dfad = all_datasets_locations(e, cdm_data_type, min_time, max_time)
+        dfad = get_dslocation(
+            e,
+            cdm_data_type,
+            min_time,
+            max_time,
+        )
         df = dfad[dfad["datasetID"].isin(dfsd["Dataset ID"])]
-        geojson = {
-            "features": [point(row[1], row[2], row[3], 3) for row in df.itertuples()],
-        }
+
     else:
-        geojson = {"features": []}
-        datasets = []
-    return geojson, datasets
+        df = pd.DataFrame()
+
+    return df
 
 
-def update_timeseries_plot(
-    e=None,
-    dataset=None,
-    standard_name=None,
-    constraints=None,
-    title_len=18,
-):
-    """This function updates the time series plot when the Update Search
-    or the Update TimeSeries button is selected."""
-    from erddap_app.layout import figure
-
-    df, var = get_timeseries(
-        e,
-        dataset=dataset,
-        standard_name=standard_name,
-        constraints=constraints,
-    )
-    figure.marks[0].x = df.index
-    figure.marks[0].y = df[var]
-    figure.title = f"{dataset[:title_len]} - {var}"
-
-
-def get_timeseries(e, dataset=None, standard_name=None, constraints=None):
+def get_timeseries(e, dataset=None, stdname=None, constraints=None):
     """This function returns the specified dataset time series values as a Pandas dataframe"""
 
     var = e.get_var_by_attr(
         dataset_id=dataset,
-        standard_name=lambda v: str(v).lower() == standard_name.lower(),
+        standard_name=lambda v: str(v).lower() == stdname.lower(),
     )
     if var:
         var = var[0]
     else:
-        raise ValueError(f"Cannot get data for {standard_name}.")
+        raise ValueError(f"Cannot get data for {stdname}.")
         # We should filter out only valid standard_names for each dataset!
         # df = pd.read_csv(e.get_info_url(response="csv"))
         # df.loc[df["Attribute Name"] == "standard_name"]["Value"].values
@@ -209,18 +118,30 @@ def get_timeseries(e, dataset=None, standard_name=None, constraints=None):
     df = pd.read_csv(
         urlopen(download_url),
         index_col="time",
-        parse_dates=True,
-        skiprows=[1],
     )
-    return df, var
+
+    # getting the units for y-axis label
+    unit = df.iloc[0, 0]
+
+    # dropping the line with the unit
+    df = df.drop(labels=df.index[0])
+
+    # adjusting the data types
+    df.index = pd.to_datetime(
+        df.index,
+        utc=True,
+    )  # df.time = df.time.astype('datetime64[ns]')
+    df[var] = df[var].astype(float)
+
+    return df, var, unit
 
 
-def remove_qcstdnames(standard_names):
+def remove_qcstdnames(stdnames):
     """This cell specifies the standard names to be skipped, such as
     quality control-related and time-invariant variables"""
 
     qc = re.compile("^.*(qc)$|^.*(data_quality)$|^.*(flag)$")
-    qc_stdnames = list(filter(qc.search, standard_names))
+    qc_stdnames = list(filter(qc.search, stdnames))
     del qc
 
     skip_stdnames = [
@@ -242,12 +163,12 @@ def remove_qcstdnames(standard_names):
 
     for skip_stdname in skip_stdnames:
         try:
-            standard_names.remove(skip_stdname)
+            stdnames.remove(skip_stdname)
         except ValueError:
             pass
     del skip_stdname
 
-    return standard_names
+    return stdnames
 
 
 def get_valid_stdnames(server_name):
@@ -255,259 +176,100 @@ def get_valid_stdnames(server_name):
     this ERDDAP endpoint, using [ERDDAP's "categorize" service]
     (http://www.neracoos.org/erddap/categorize/index.html)"""
 
+    global e, server
     server = servers[server_name]
     server_url = server.get("url")
 
     e = ERDDAP(server=server_url, protocol="tabledap")
 
-    url_standard_names = f"{server_url}/categorize/standard_name/index.csv"
-    df = pd.read_csv(urlopen(url_standard_names), skiprows=[1, 2])
-    standard_names = list(df["Category"].values)
+    url_stdnames = f"{server_url}/categorize/standard_name/index.csv"
+    df = pd.read_csv(urlopen(url_stdnames), skiprows=[1, 2])
+    stdnames = list(df["Category"].values)
 
-    standard_names = remove_qcstdnames(standard_names)
+    stdnames = remove_qcstdnames(stdnames)
 
-    valid_standard_names = []
+    valid_stdnames = []
     count = 0
 
-    print(
-        "Checking the variables available for this server. This might take up to a couple of minutes...\n",
-    )
-
-    for standard_name in standard_names:
+    for stdname in stdnames:
 
         count += 1
 
-        if count == np.floor(len(standard_names) / 2):
-            print("Halfway there...\n")
-        elif count == np.floor((len(standard_names) / 4) * 3):
-            print("Almost done...\n")
-        elif count == (len(standard_names)):
-            print("Done!")
+        progressbar.value = int(count / (len(stdnames)) * 100)
 
-        features, datasets = stdname2geojson(
+        df_stdname = get_datasets(
             e,
-            standard_name,
+            stdname,
             server.get("cdm_data_type"),
             server.get("min_time"),
             server.get("max_time"),
             server.get("skip_datasets"),
         )
 
-        if len(datasets) > 0:  # if there is at least one dataset with this data
+        if not df_stdname.empty:
 
             var = e.get_var_by_attr(
-                dataset_id=datasets[0],
-                standard_name=lambda v: str(v).lower() == standard_name.lower(),
+                dataset_id=df_stdname.datasetID.values[0],
+                standard_name=lambda v: str(v).lower() == stdname.lower(),
             )
 
             if var != []:
-                valid_standard_names.append(standard_name)
+                valid_stdnames.append(stdname)
 
-        del features, datasets
-
-    return valid_standard_names, server, e
+    return valid_stdnames, server, e
 
 
-def plot_datasets(server, e):
-    """This defines the initial ipyleaflet map"""
+def replot_dsmap(stdname, timerange):
 
-    map = ipyl.Map(
-        center=server.get("center"),
-        zoom=server.get("zoom"),
-        layout=dict(width="750px", height="350px"),
-    )
-
-    features, datasets = stdname2geojson(
+    df_dsmap = get_datasets(
         e,
-        server.get("standard_name"),
+        stdname,
         server.get("cdm_data_type"),
-        server.get("min_time"),
-        server.get("max_time"),
+        timerange[0],
+        timerange[1],
         server.get("skip_datasets"),
     )
 
-    feature_layer = ipyl.GeoJSON(data=features)
-
-    # feature_layer.on_click(map_click_handler(e=e))
-    map.layers = [map.layers[0], feature_layer]
-    return map, feature_layer, datasets
-
-
-def plot_timeseries(server, e, dataset_id):
-    """This defines the initial bqplot time series plot"""
-    dt_x = bq.DateScale()
-    sc_y = bq.LinearScale()
-
-    constraints = {"time>=": server.get("min_time"), "time<=": server.get("max_time")}
-
-    df, var = get_timeseries(
-        e=e,
-        dataset=dataset_id,
-        standard_name=server.get("standard_name"),
-        constraints=constraints,
+    easting, northing = hv.util.transform.lon_lat_to_easting_northing(
+        df_dsmap.minLongitude,
+        df_dsmap.minLatitude,
     )
-    def_tt = bq.Tooltip(fields=["y"], formats=[".2f"], labels=["value"])
-    time_series = bq.Lines(
-        x=df.index,
-        y=df[var],
-        scales={"x": dt_x, "y": sc_y},
-        tooltip=def_tt,
-    )
-    ax_x = bq.Axis(scale=dt_x, label="Time")
-    ax_y = bq.Axis(scale=sc_y, orientation="vertical")
-    figure = bq.Figure(marks=[time_series], axes=[ax_x, ax_y])
-    figure.title = f"{dataset_id[:18]} - {var}"
-    figure.layout.height = "300px"
-    figure.layout.width = "800px"
-    return figure
+    df_dsmap.loc[:, "easting"] = easting
+    df_dsmap["northing"] = northing
 
-
-def space():
-    ispace = ipyw.HTML(
-        value='<style>  .space {margin-bottom: 6.5cm;}</style><p class="space"> </p>',
-        placeholder="",
-        description="",
-    )
-    return ispace
-
-
-def widget_replot_button_handler(change):
-    """The widget_replot_button_handler function updates the time series plot when the
-    Update TimeSeries button is selected"""
-    from erddap_app.layout import (
-        e,
-        widget_dsnames,
-        widget_plot_start_time,
-        widget_plot_stop_time,
-        widget_std_names,
+    dsmap = OSM() * df_dsmap.hvplot.points(
+        x="easting",
+        y="northing",
+        hover_cols=["datasetID", "minLongitude", "minLatitude"],
+        title="Datasets",
+        size=20,
+        line_color="black",
     )
 
-    plot_start_time = pendulum.parse(widget_plot_start_time.value)
-    plot_stop_time = pendulum.parse(widget_plot_stop_time.value)
-
-    constraints = {"time>=": plot_start_time, "time<=": plot_stop_time}
-    dataset_id = widget_dsnames.value
-    update_timeseries_plot(
-        e,
-        dataset=dataset_id,
-        standard_name=widget_std_names.value,
-        constraints=constraints,
-    )
+    return dsmap
 
 
-def widget_search_button_handler(change):
-    """The widget_search_button_handler function updates the map when the
-    Update Search button is selected"""
-    from erddap_app.layout import (
-        e,
-        map,
-        server,
-        widget_dsnames,
-        widget_search_max_time,
-        widget_search_min_time,
-        widget_std_names,
-    )
-
-    min_time = pendulum.parse(widget_search_min_time.value)
-    max_time = pendulum.parse(widget_search_max_time.value)
-
-    standard_name = widget_std_names.value
-
-    features, datasets = stdname2geojson(
-        e,
-        standard_name,
-        server.get("cdm_data_type"),
-        min_time,
-        max_time,
-        server.get("skip_datasets"),
-    )
-
-    feature_layer = ipyl.GeoJSON(data=features)
-    constraints = {"time>=": min_time, "time<=": max_time}
-    # feature_layer.on_click(map_click_handler)
-    map.layers = [map.layers[0], feature_layer]
-
-    dataset_id = datasets[0]
-    widget_dsnames.options = datasets
-    widget_dsnames.value = dataset_id
-
-    update_timeseries_plot(
-        e,
-        dataset=dataset_id,
-        standard_name=standard_name,
-        constraints=constraints,
-    )
-
-
-def f_widget_dsnames(datasets):
-    """Create a dropdown menu widget with all the datasets names found"""
-    dataset_id = datasets[0]
-    widget_dsnames = ipyw.Dropdown(options=datasets, value=dataset_id)
-    return widget_dsnames
-
-
-def f_widget_std_names(server, valid_standard_names):
-    """Create a dropdown menu widget with all the valid standard_name values found"""
-    widget_std_names = ipyw.Dropdown(
-        options=valid_standard_names,
-        value=server.get("standard_name"),
-    )
-    return widget_std_names
-
-
-def f_widget_search_min_time(server):
-    """Create a text widget to enter the search minimum time for the datasets search"""
-    widget_search_min_time = ipyw.Text(
-        value=server.get("min_time").to_datetime_string(),
-        description="Search Min",
-        disabled=False,
-    )
-    return widget_search_min_time
-
-
-def f_widget_search_max_time(server):
-    """Create a text widget to enter the search maximum time for the datasets search"""
-    widget_search_max_time = ipyw.Text(
-        value=server.get("max_time").to_datetime_string(),
-        description="Search Max",
-        disabled=False,
-    )
-    return widget_search_max_time
-
-
-# Create the Update Search button
-widget_search_button = ipyw.Button(
-    value=False,
-    description="Update Search",
-    disabled=False,
-    button_style="",
+progressbar = pn.indicators.Progress(
+    name="Checking the variables available for this server",
+    bar_color="info",
+    value=0,
+    width=200,
 )
 
 
-def f_widget_plot_start_time(server):
-    """Create a text widget to enter the search minimum time for the time series plot"""
-    widget_plot_start_time = ipyw.Text(
-        value=server.get("min_time").to_datetime_string(),
-        description="Plot Min",
-        disabled=False,
-    )
-    return widget_plot_start_time
+wstdname_date = pn.widgets.DateRangeSlider(
+    start=datetime.datetime(2011, 1, 1),
+    end=datetime.datetime.today(),
+    value=(
+        datetime.datetime.today() - datetime.timedelta(days=14),
+        datetime.datetime.today(),
+    ),
+)
 
 
-def f_widget_plot_stop_time(server):
-    """Create a text widget to enter the search maximum time for the time series plot"""
-    widget_plot_stop_time = ipyw.Text(
-        value=server.get("max_time").to_datetime_string(),
-        description="Plot Max",
-        disabled=False,
-    )
-    return widget_plot_stop_time
-
-
-# Create the Update TimeSeries button
-widget_replot_button = ipyw.Button(
-    value=False,
-    description="Update TimeSeries",
-    disabled=False,
-    button_style="",
+wds_date = pn.widgets.DateRangeSlider(
+    name="Limits for the timeseries plot",
+    start=datetime.datetime(2011, 1, 1),
+    end=datetime.datetime.today(),
+    value=(wstdname_date.value_start, wstdname_date.value_end),
 )
