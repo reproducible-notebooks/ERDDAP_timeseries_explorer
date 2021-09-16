@@ -1,7 +1,6 @@
 name: widgets
 channels:
   - conda-forge
-  - pyviz
 dependencies:
   - python=3.8
   - pandas
