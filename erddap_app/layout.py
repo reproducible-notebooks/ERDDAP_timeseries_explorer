@@ -3,17 +3,211 @@ import re
 from urllib.parse import quote
 
 import holoviews as hv
+import hvplot.pandas  # noqa
+import numpy as np
 import pandas as pd
 import panel as pn
+from bokeh.models import HoverTool
+from bokeh.models.formatters import DatetimeTickFormatter
 from erddapy import ERDDAP
 from erddapy.url_handling import urlopen
 from holoviews.element.tiles import OSM
+from IPython.display import display
 from requests import HTTPError
 
 from erddap_app.config import servers
 
+formatter = DatetimeTickFormatter(days="%d/%m/%y")
+utcnow = datetime.datetime.utcnow()
+
 hv.extension("bokeh")
 pn.extension()
+
+pd.set_option("mode.chained_assignment", None)
+
+hover1 = HoverTool(
+    tooltips=[
+        ("latitude", "@latitude"),
+        ("longitude", "@longitude"),
+        ("dataset", "@datasetID"),
+    ],
+    formatters={
+        "latitude": "numeral",
+        "longitude": "numeral",
+    },
+)
+
+
+def layout(server_name):
+    global server, e, valid_stdnames
+    global progressbar
+    global wds_menu, wds_date, wstdname_menu, wstdname_date
+    global dsnames, dsmap, df_dsmap
+
+    wstdname_date = pn.widgets.DateRangeSlider(
+        start=datetime.datetime(2011, 1, 1),
+        end=utcnow,
+        value=(utcnow - datetime.timedelta(days=14), utcnow),
+    )
+
+    wds_date = pn.widgets.DateRangeSlider(
+        name="Limits for the timeseries plot",
+        start=datetime.datetime(2011, 1, 1),
+        end=utcnow,
+        value=(wstdname_date.value_start, wstdname_date.value_end),
+    )
+
+    progressbar = pn.indicators.Progress(
+        name="Checking the variables available for this server",
+        bar_color="info",
+        value=0,
+        width=200,
+    )
+
+    valid_stdnames, server, e = get_valid_stdnames(server_name)
+
+    wstdname_menu = f_wstdname_menu(valid_stdnames)
+    wds_menu = f_wds_menu()
+
+    wstdname_menu.param.watch(update_wds_menu, "value")
+    wstdname_date.param.watch(update_wds_date, "value")
+
+    dyndsmap = create_dyndsmap()
+    dyntseries = create_dyntseries()
+
+    gspec = pn.GridSpec(sizing_mode="stretch_both", max_height=800)
+    gspec[0, 0] = OSM() * dyndsmap
+    gspec[0, 1] = pn.WidgetBox(
+        "## ERDDAP timeseries explorer",
+        wstdname_menu,
+        wstdname_date,
+        wds_menu,
+        wds_date,
+    )
+    gspec[1, :] = dyntseries
+
+    display(gspec)
+
+
+def create_dyndsmap():
+    trange = np.arange(
+        datetime.datetime(2011, 1, 1),
+        utcnow,
+        datetime.timedelta(days=1),
+    )
+
+    dyndsmap = hv.DynamicMap(plot_dsmap, kdims=["Stdnames", "TimeRange"])
+    dyndsmap = dyndsmap.redim.values(Stdnames=valid_stdnames, TimeRange=trange)
+
+    dyndsmap = hv.DynamicMap(
+        pn.bind(
+            plot_dsmap,
+            stdname=wstdname_menu,
+            timerange=wstdname_date,
+        ),
+    )
+
+    return dyndsmap
+
+
+def f_wstdname_menu(valid_stdnames):
+    wstdname_menu = pn.widgets.Select(
+        name="Choose a variable",
+        options=valid_stdnames,
+        value=server.get("standard_name"),
+    )
+    return wstdname_menu
+
+
+def f_wds_menu():
+    global dsnames
+    df = get_datasets(
+        e,
+        server.get("standard_name"),
+        server.get("cdm_data_type"),
+        wstdname_date.value_start,
+        wstdname_date.value_end,
+        server.get("skip_datasets"),
+    )
+    dsnames = list(df.datasetID.values)
+
+    wds_menu = pn.widgets.Select(
+        name="Choose a dataset",
+        options=dsnames,
+    )
+    return wds_menu
+
+
+def create_dyntseries():
+    trange = np.arange(
+        datetime.datetime(2011, 1, 1),
+        utcnow,
+        datetime.timedelta(days=1),
+    )
+
+    dyntseries = hv.DynamicMap(plot_tseries, kdims=["Dataset", "TimeRange", "Stdnames"])
+    dyntseries = dyntseries.redim.values(
+        Dataset=dsnames,
+        TimeRange=trange,
+        Stdnames=valid_stdnames,
+    )
+
+    dyntseries.opts(width=500, framewise=True)
+
+    dyntseries = hv.DynamicMap(
+        pn.bind(
+            plot_tseries,
+            dataset=wds_menu,
+            timerange=wds_date,
+            stdname=wstdname_menu,
+        ),
+    )
+    return dyntseries
+
+
+def plot_tseries(dataset, timerange, stdname):
+
+    constraints = {"time>=": timerange[0], "time<=": timerange[1]}
+
+    df_tseries, var_tseries, unit_tseries = get_timeseries(
+        e=e,
+        dataset=dataset,
+        stdname=wstdname_menu.value,
+        constraints=constraints,
+    )
+
+    ylabel = df_tseries.columns[0]
+    ylabel.replace("_", " ")
+
+    dsname = dataset.replace("_", " ")
+    varname = df_tseries.columns[0].replace("_", " ")
+
+    tseries = df_tseries.hvplot(
+        kind="line",
+        ylabel=unit_tseries,
+        title=f"{dsname}   -   {varname}",
+        grid=True,
+        xticks=8,
+        xformatter=formatter,
+    )
+    return tseries
+
+
+def update_wds_menu(event):
+    df = get_datasets(
+        e,
+        wstdname_menu.value,
+        server.get("cdm_data_type"),
+        wstdname_date.value_start,
+        wstdname_date.value_end,
+        server.get("skip_datasets"),
+    )
+    dsnames = list(df.datasetID.values)
+    wds_menu.options = dsnames
+
+
+def update_wds_date(event):
+    wds_date.value = wstdname_date.value
 
 
 def get_dsinfo(e, stdname, cdm_data_type, min_time, max_time, skip_datasets):
@@ -86,7 +280,11 @@ def get_datasets(e, stdname, cdm_data_type, min_time, max_time, skip_datasets):
             max_time,
         )
         df = dfad[dfad["datasetID"].isin(dfsd["Dataset ID"])]
-
+        df.rename(
+            {"minLongitude": "longitude", "minLatitude": "latitude"},
+            axis="columns",
+            inplace=True,
+        )
     else:
         df = pd.DataFrame()
 
@@ -104,9 +302,6 @@ def get_timeseries(e, dataset=None, stdname=None, constraints=None):
         var = var[0]
     else:
         raise ValueError(f"Cannot get data for {stdname}.")
-        # We should filter out only valid standard_names for each dataset!
-        # df = pd.read_csv(e.get_info_url(response="csv"))
-        # df.loc[df["Attribute Name"] == "standard_name"]["Value"].values
 
     download_url = e.get_download_url(
         dataset_id=dataset,
@@ -120,17 +315,14 @@ def get_timeseries(e, dataset=None, stdname=None, constraints=None):
         index_col="time",
     )
 
-    # getting the units for y-axis label
     unit = df.iloc[0, 0]
 
-    # dropping the line with the unit
     df = df.drop(labels=df.index[0])
 
-    # adjusting the data types
     df.index = pd.to_datetime(
         df.index,
         utc=True,
-    )  # df.time = df.time.astype('datetime64[ns]')
+    )
     df[var] = df[var].astype(float)
 
     return df, var, unit
@@ -176,7 +368,6 @@ def get_valid_stdnames(server_name):
     this ERDDAP endpoint, using [ERDDAP's "categorize" service]
     (http://www.neracoos.org/erddap/categorize/index.html)"""
 
-    global e, server
     server = servers[server_name]
     server_url = server.get("url")
 
@@ -190,6 +381,8 @@ def get_valid_stdnames(server_name):
 
     valid_stdnames = []
     count = 0
+
+    display(pn.Column(pn.panel(progressbar.name), progressbar))
 
     for stdname in stdnames:
 
@@ -219,7 +412,7 @@ def get_valid_stdnames(server_name):
     return valid_stdnames, server, e
 
 
-def replot_dsmap(stdname, timerange):
+def plot_dsmap(stdname, timerange):
 
     df_dsmap = get_datasets(
         e,
@@ -231,45 +424,17 @@ def replot_dsmap(stdname, timerange):
     )
 
     easting, northing = hv.util.transform.lon_lat_to_easting_northing(
-        df_dsmap.minLongitude,
-        df_dsmap.minLatitude,
+        df_dsmap.longitude,
+        df_dsmap.latitude,
     )
     df_dsmap.loc[:, "easting"] = easting
     df_dsmap["northing"] = northing
 
-    dsmap = OSM() * df_dsmap.hvplot.points(
-        x="easting",
-        y="northing",
-        hover_cols=["datasetID", "minLongitude", "minLatitude"],
-        title="Datasets",
-        size=20,
-        line_color="black",
+    dsmap = hv.Points(df_dsmap, kdims=["easting", "northing"]).opts(
+        size=5,
+        color="black",
+        tools=["tap", hover1],
+        alpha=0.4,
     )
 
     return dsmap
-
-
-progressbar = pn.indicators.Progress(
-    name="Checking the variables available for this server",
-    bar_color="info",
-    value=0,
-    width=200,
-)
-
-
-wstdname_date = pn.widgets.DateRangeSlider(
-    start=datetime.datetime(2011, 1, 1),
-    end=datetime.datetime.today(),
-    value=(
-        datetime.datetime.today() - datetime.timedelta(days=14),
-        datetime.datetime.today(),
-    ),
-)
-
-
-wds_date = pn.widgets.DateRangeSlider(
-    name="Limits for the timeseries plot",
-    start=datetime.datetime(2011, 1, 1),
-    end=datetime.datetime.today(),
-    value=(wstdname_date.value_start, wstdname_date.value_end),
-)
