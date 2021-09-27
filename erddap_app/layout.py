@@ -42,6 +42,29 @@ hover1 = HoverTool(
 )
 
 
+def create_dyndsmap():
+    trange = np.arange(datetime.datetime(2011,1,1), 
+                   utcnow, 
+                   datetime.timedelta(days=1)
+                   )
+    # says that the function above has to do with a dynamic map, and each map will be calculated 
+    # for each different stdname and each timerange
+    dyndsmap = hv.DynamicMap(plot_dsmap, kdims=['Stdnames','TimeRange'])
+    dyndsmap = dyndsmap.redim.values(Stdnames=valid_stdnames, TimeRange=trange)
+
+    # pn.bind declares that the function load_stdnames should be re-run when the stdname and/or timerange argument
+    # changes, due to changes in the stdnames_menu / dsname_date widget value.
+    # function, its arguments and which widgets will have the values for the arguments
+    dyndsmap = hv.DynamicMap(pn.bind(plot_dsmap, 
+                                     stdname=wstdname_menu, 
+                                     timerange=wstdname_date,
+                                    )
+                             )
+#                             , streams=create_stream()) 
+    
+    return dyndsmap
+
+
 def f_wstdname_menu(valid_stdnames):
     wstdname_menu = pn.widgets.Select(name='Choose a variable',
                                       options=valid_stdnames, 
@@ -67,7 +90,7 @@ def f_wds_menu():
                                  ) 
     return wds_menu
 
-    
+
 def plot_tseries(dataset,timerange,stdname):    
     
     constraints = {"time>=": timerange[0], "time<=": timerange[1]}
