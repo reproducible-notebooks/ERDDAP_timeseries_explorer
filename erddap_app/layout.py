@@ -86,7 +86,7 @@ def update_wds_menu(event):
 def update_wds_date(event):
         wds_date.value = wstdname_date.value
 
-        
+
 def get_dsinfo(e, stdname, cdm_data_type, min_time, max_time, skip_datasets):
     """This function finds all the datasets with a given standard_name in
     the specified time period, and return GeoJSON"""
@@ -157,7 +157,7 @@ def get_datasets(e, stdname, cdm_data_type, min_time, max_time, skip_datasets):
             max_time,
         )
         df = dfad[dfad["datasetID"].isin(dfsd["Dataset ID"])]
-
+        df.rename({'minLongitude':'longitude','minLatitude':'latitude'},axis='columns', inplace=True)
     else:
         df = pd.DataFrame()
 
@@ -247,7 +247,6 @@ def get_valid_stdnames(server_name):
     this ERDDAP endpoint, using [ERDDAP's "categorize" service]
     (http://www.neracoos.org/erddap/categorize/index.html)"""
 
-    global e, server
     server = servers[server_name]
     server_url = server.get("url")
 
@@ -261,6 +260,8 @@ def get_valid_stdnames(server_name):
 
     valid_stdnames = []
     count = 0
+
+    display(pn.Column(pn.panel(progressbar.name), progressbar))
 
     for stdname in stdnames:
 
@@ -290,7 +291,7 @@ def get_valid_stdnames(server_name):
     return valid_stdnames, server, e
 
 
-def replot_dsmap(stdname, timerange):
+def plot_dsmap(stdname, timerange):
 
     df_dsmap = get_datasets(
         e,
@@ -308,14 +309,12 @@ def replot_dsmap(stdname, timerange):
     df_dsmap.loc[:, "easting"] = easting
     df_dsmap["northing"] = northing
 
-    dsmap = OSM() * df_dsmap.hvplot.points(
-        x="easting",
-        y="northing",
-        hover_cols=["datasetID", "minLongitude", "minLatitude"],
-        title="Datasets",
-        size=20,
-        line_color="black",
-    )
+    dsmap = hv.Points(df_dsmap,kdims=['easting','northing'],
+                              ).opts(size=5,
+                                     color='black',
+                                     tools=['tap',hover1],
+                                     alpha=0.4,
+                                     )
 
     return dsmap
 
