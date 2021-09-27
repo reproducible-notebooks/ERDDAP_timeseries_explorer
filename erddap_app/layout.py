@@ -91,6 +91,31 @@ def f_wds_menu():
     return wds_menu
 
 
+def create_dyntseries():
+    trange = np.arange(datetime.datetime(2011,1,1), 
+                   utcnow, 
+                   datetime.timedelta(days=1)
+                   )
+    # função, nome da kdim, nome da kdim=opções do widget
+    dyntseries = hv.DynamicMap(plot_tseries, kdims=['Dataset','TimeRange','Stdnames'])
+    dyntseries = dyntseries.redim.values(Dataset=dsnames, 
+                           TimeRange=trange, 
+                           Stdnames=valid_stdnames,
+                          )
+
+    dyntseries.opts(width=500, framewise=True)
+    # dmap.opts(framewise=True)
+
+    # function, its arguments and which widgets will have the values for the arguments
+    dyntseries = hv.DynamicMap(pn.bind(plot_tseries, 
+                              dataset=wds_menu, 
+                              timerange=wds_date, 
+                              stdname=wstdname_menu,
+                             )
+                     )
+    return dyntseries
+
+
 def plot_tseries(dataset,timerange,stdname):    
     
     constraints = {"time>=": timerange[0], "time<=": timerange[1]}
