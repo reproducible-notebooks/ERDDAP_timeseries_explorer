@@ -41,6 +41,52 @@ hover1 = HoverTool(
     },
 )
 
+
+def plot_tseries(dataset,timerange,stdname):    
+    
+    constraints = {"time>=": timerange[0], "time<=": timerange[1]}
+    
+    df_tseries, var_tseries, unit_tseries = get_timeseries(e=e,
+                                                        dataset=dataset,            # from dswidgets
+                                                        stdname=wstdname_menu.value,# from stdwidgets
+                                                        constraints=constraints,    # from dswidgets
+                                                        )
+    
+    # determine ylabel
+    ylabel = df_tseries.columns[0] 
+    ylabel.replace("_", " ")
+    
+    # determine title
+    dsname = dataset.replace("_", " ") 
+    varname = df_tseries.columns[0].replace("_", " ")
+
+    # plot
+    tseries = df_tseries.hvplot(kind='line',
+                                ylabel=unit_tseries,
+                                title=f"{dsname}   -   {varname}",
+                                grid=True,
+                                xticks=8,
+                                xformatter=formatter,
+                                )
+    return tseries
+
+
+def update_wds_menu(event):
+        df = get_datasets(e,
+                          wstdname_menu.value, 
+                          server.get("cdm_data_type"), # what's this for, again?
+                          wstdname_date.value_start, 
+                          wstdname_date.value_end, 
+                          server.get("skip_datasets")
+                         )
+        dsnames = list(df.datasetID.values)
+        wds_menu.options = dsnames
+
+
+def update_wds_date(event):
+        wds_date.value = wstdname_date.value
+
+        
 def get_dsinfo(e, stdname, cdm_data_type, min_time, max_time, skip_datasets):
     """This function finds all the datasets with a given standard_name in
     the specified time period, and return GeoJSON"""
