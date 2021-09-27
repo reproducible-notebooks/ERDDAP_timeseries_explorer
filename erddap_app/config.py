@@ -3,6 +3,7 @@ import datetime
 import pendulum
 
 now = pendulum.now(tz="utc")
+utcnow = datetime.datetime.utcnow()
 
 servers = {
     "ioos": {
@@ -45,8 +46,8 @@ servers = {
         "cdm_data_type": "TimeSeries",
         "center": [42.5, -68],
         "zoom": 6,
-        "max_time": datetime.datetime.today(),
-        "min_time": datetime.datetime.today() - datetime.timedelta(days=14),
+        "max_time": utcnow,
+        "min_time": utcnow - datetime.timedelta(days=14),
         "skip_datasets": ["cwwcNDBCMet", "UNH_CML", "UNH_WBD"],
     },
 }
