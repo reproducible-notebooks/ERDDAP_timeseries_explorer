@@ -49,6 +49,24 @@ def f_wstdname_menu(valid_stdnames):
                                  )
     return wstdname_menu
 
+
+def f_wds_menu():
+    global dsnames # create_dynplot needs it
+    df = get_datasets(e,
+                  server.get("standard_name"),
+                  server.get("cdm_data_type"),
+                  wstdname_date.value_start, 
+                  wstdname_date.value_end, 
+                  server.get("skip_datasets")
+                  )
+    dsnames = list(df.datasetID.values)
+
+    # this widget depends on the wstdname_menu.value pra poder achar os valores disponíveis como opções
+    wds_menu = pn.widgets.Select(name='Choose a dataset',
+                                 options=dsnames,        
+                                 ) 
+    return wds_menu
+
     
 def plot_tseries(dataset,timerange,stdname):    
     
