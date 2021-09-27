@@ -27,6 +27,19 @@ utcnow = datetime.datetime.utcnow()
 hv.extension("bokeh")
 pn.extension()
 
+pd.set_option('mode.chained_assignment',None) # silence some stupid warning from pandas
+
+hover1 = HoverTool(
+    tooltips=[
+        ( 'latitude', '@latitude'),
+        ( 'longitude', '@longitude'),
+        ( 'dataset', '@datasetID'),
+   ],
+    formatters={
+        'latitude' : 'numeral',
+        'longitude' : 'numeral',
+    },
+)
 
 def get_dsinfo(e, stdname, cdm_data_type, min_time, max_time, skip_datasets):
     """This function finds all the datasets with a given standard_name in
