@@ -424,8 +424,8 @@ def plot_dsmap(stdname, timerange):
     )
 
     easting, northing = hv.util.transform.lon_lat_to_easting_northing(
-        df_dsmap.minLongitude,
-        df_dsmap.minLatitude,
+        df_dsmap.longitude,
+        df_dsmap.latitude,
     )
     df_dsmap.loc[:, "easting"] = easting
     df_dsmap["northing"] = northing
