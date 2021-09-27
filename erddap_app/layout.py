@@ -1,16 +1,28 @@
+import numpy as np
+import pandas as pd
 import datetime
+
 import re
 from urllib.parse import quote
-
-import holoviews as hv
-import pandas as pd
-import panel as pn
-from erddapy import ERDDAP
-from erddapy.url_handling import urlopen
-from holoviews.element.tiles import OSM
 from requests import HTTPError
 
+import hvplot.pandas
+import bokeh
+from bokeh.models import HoverTool
+import holoviews as hv
+import panel as pn
+from holoviews.element.tiles import OSM
+
+from erddapy import ERDDAP
+from erddapy.url_handling import urlopen
+
 from erddap_app.config import servers
+
+from IPython.display import display
+
+from bokeh.models.formatters import DatetimeTickFormatter
+formatter = DatetimeTickFormatter(days="%d/%m/%y")
+utcnow = datetime.datetime.utcnow() 
 
 hv.extension("bokeh")
 pn.extension()
