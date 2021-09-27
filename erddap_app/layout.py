@@ -42,6 +42,14 @@ hover1 = HoverTool(
 )
 
 
+def f_wstdname_menu(valid_stdnames):
+    wstdname_menu = pn.widgets.Select(name='Choose a variable',
+                                      options=valid_stdnames, 
+                                      value=server.get("standard_name")
+                                 )
+    return wstdname_menu
+
+    
 def plot_tseries(dataset,timerange,stdname):    
     
     constraints = {"time>=": timerange[0], "time<=": timerange[1]}
